@@ -20,7 +20,13 @@
     }
   },
   "curvature": {
-    "x": null,
-    "y": null
+    "top": {
+      "x": null,
+      "y": null
+    },
+    "bottom": {
+      "x": null,
+      "y": null
+    }
   }
 }
