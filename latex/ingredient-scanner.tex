@@ -1,0 +1,55 @@
+\documentclass[a4paper,11pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[hyphens]{url}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage[backend=bibtex,urldate=iso]{biblatex}
+
+\addbibresource{references.bib}
+
+% Title Page
+\title{Automating Reading of Ingredient Labels with Computer Vision}
+\author{Lena Merkli and Sonja Merkli}
+
+
+\begin{document}
+    \maketitle
+    \begin{abstract}
+        %TODO%
+        TODO
+    \end{abstract}
+    \tableofcontents
+
+    \chapter{Project Plan}
+
+        \section{Architecture}
+                Our computer vision project, IngredientScanner, uses multiple layers of artificial intelligences stacked on top of each other and connected with code. This ensures the computational efficency as it is possible to aid the individual layers with code and standardize the connections between them.
+
+            \subsection{Image Filters}
+                As the first step, each frame is parsed by image filters which sharpen the edges and reduce the resolution as well as the color spectrum.
+
+            \subsection{First Vision Layer}
+                The first vision layer is a keypoint detection convolutional neural network and is going to detect the 4 corners of the packaging. This neural network outputs two additional points at the top and the bottom of the packaging to indentify cylindrical objects. We assume as part of our project that spherical products are inexistant.
+
+            \subsection{Image Distortion}
+                All datapoints from the first vision layer are used to distort and crop the image in such a way that the back of the product covers the entire rectangular canvas as if it was scanned by a scanner in printer.
+
+            \subsection{Second Vision Layer}
+                Similar to the first one, this is also a keypoint detection convolutional neural network.
+                It is going to identify the part of the back of the packaging with the ingredient list. All other image data is discarded, altough it can be used in future projects.
+
+            \subsection{Optical Character Recognition}
+                This part turns pixels from an image into text characters. We won't create our own OCR engine as it probably would return sub-optimal results.
+
+            \subsection{Text Parsing with LLM}
+                It is known since the beginning of the existance of OCR that they sometimes return additional whitespace, leave out whitespaces and swap characters. To combat this, the result of the last layer is standardized by a large language model. In order to increase the accuracy, GBNF (Gerganov Bakus-Naur Form) \cite{gbnf} allong with a local llama.cpp \cite{llamacpp} instance will be in use. This step is also important to distinguish between ingredients and contaminants.
+
+            \subsection{Lookup Table}
+                Information about each ingredient and contaminant will be retrieved from a lookup table. Included in each entry will be atleast data on the following parameters: lactose, gluten, vegan, vegetarian, egg, peanut, tree nut, soy and fish. The definition of those will be derived from swiss law \cite{fedlex-ingredient}.
+
+
+    \printbibliography
+
+\end{document}
