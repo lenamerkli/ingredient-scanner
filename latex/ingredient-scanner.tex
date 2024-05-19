@@ -1,10 +1,11 @@
 \documentclass[a4paper,11pt]{report}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
-\usepackage[hyphens]{url}
+\usepackage[hyphens]{xurl}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{mathtools}
+\usepackage{hyperref}
 \usepackage[backend=bibtex,urldate=iso]{biblatex}
 
 \addbibresource{references.bib}
@@ -16,10 +17,9 @@
 
 \begin{document}
     \maketitle
-    \begin{abstract}
-        %TODO%
-        TODO
-    \end{abstract}
+    %\begin{abstract}
+    %    TODO
+    %\end{abstract}
     \tableofcontents
 
     \chapter{Project Plan}
@@ -28,12 +28,14 @@
                 Our computer vision project, IngredientScanner, uses multiple layers of artificial intelligences stacked on top of each other and connected with code. This ensures the computational efficency as it is possible to aid the individual layers with code and standardize the connections between them.
 
             \subsection{Image Filters}
+                \label{subsec:architecture:filters}
                 As the first step, each frame is parsed by image filters which sharpen the edges and reduce the resolution as well as the color spectrum.
 
             \subsection{First Vision Layer}
                 The first vision layer is a keypoint detection convolutional neural network and is going to detect the 4 corners of the packaging. This neural network outputs two additional points at the top and the bottom of the packaging to indentify cylindrical objects. We assume as part of our project that spherical products are inexistant.
 
             \subsection{Image Distortion}
+                \label{subsec:architecture:distortion}
                 All datapoints from the first vision layer are used to distort and crop the image in such a way that the back of the product covers the entire rectangular canvas as if it was scanned by a scanner in printer.
 
             \subsection{Second Vision Layer}
@@ -47,7 +49,48 @@
                 It is known since the beginning of the existance of OCR that they sometimes return additional whitespace, leave out whitespaces and swap characters. To combat this, the result of the last layer is standardized by a large language model. In order to increase the accuracy, GBNF (Gerganov Bakus-Naur Form) \cite{gbnf} allong with a local llama.cpp \cite{llamacpp} instance will be in use. This step is also important to distinguish between ingredients and contaminants.
 
             \subsection{Lookup Table}
-                Information about each ingredient and contaminant will be retrieved from a lookup table. Included in each entry will be atleast data on the following parameters: lactose, gluten, vegan, vegetarian, egg, peanut, tree nut, soy and fish. The definition of those will be derived from swiss law \cite{fedlex-ingredient}.
+                \label{subsec:architecture:table}
+                Information about each ingredient and contaminant will be retrieved from a lookup table. Included in each entry will be atleast data on the following parameters: lactose, gluten, vegan, vegetarian, egg, peanut, tree nut, soy and fish. The exact number and contents will be determinded once we reached this step. The definition of those will be derived from swiss law \cite{fedlex-ingredient}.
+
+        \section{Training-Data Aggregation}
+
+            \subsection{Video Recording}
+                \label{subsec:data:recording}
+                Short video clips of the back of the product from different angles are recorded to eliminate the hustle to take a lot of photos manually. These videos are cut to remove unusable data if not the entirety of the product has been captured. All frames are extracted from those videos with FFmpeg \cite{ffmpeg} \cite{ffmpeg-python}.
+
+            \subsection{Manual Labeling}
+                The pictures resulting from the previous process are labeled manually by determening the corners and the curviture. The results are stored in JSON \cite{json}, which is both human- and computer-readable.
+
+            \subsection{Dataset Inflation}
+                \label{subsec:data:inflation}
+                In order to save working hours, all already label datapoints are automatically distorted, rotated and edited in other ways to create new synthetic data. The coordinates of the corners will be edited in the same way.
+
+            \subsection{Hybrid Labeling}
+                Once a first version of the AIs are trained, these can be used to generate the data of not yet labeled pictures. This data will be review and corrected if necessary. We have been inspired by the reinforcement learning from human feedback (RLHF) \cite{rlhf1} \cite{rlhf2}  of large language models.
+
+        \section{Coding}
+
+            \subsection{Frame Extraction}
+                Extracts frames from all videos. Used in \hyperref[subsec:data:recording]{Video Recording} Available on \url{https://github.com/lenamerkli/ingredient-scanner/blob/main/data/video_to_frames.py}.
+
+            \subsection{Dataset Inflation}
+                Creates new datapoints from already existing ones. Used in \hyperref[subsec:data:inflation]{Dataset Inflation of Training-Data}.
+
+            \subsection{Image Sharpening}
+                Sharpens the edges and reduces the resolution as well as the color spectrum. Used in \hyperref[subsec:architecture:filters]{Image Filters}.
+
+            \subsection{Image Distortion}
+                Distorts an image based on the corners and the curvature to create the illusion of a flat and rectangular photo. Used in \hyperref[subsec:architecture:distortion]{Image Distortion}
+
+            \subsection{Lookup Table}
+                Categorizes the found ingredients according to the database. Used in \hyperref[subsec:architecture:table]{Lookup Table}.
+
+        \section{AI Training}
+            The two AIs will be trained after each other with PyTorch \cite{pytorch} on a local server with a Nvidia RTX 4060 with 8GB RAM.
+
+        \section{Work Distribution}
+            Sonja will be responsible for the aggregation of the training data. Lena does everything else.
+
 
 
     \printbibliography

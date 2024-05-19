@@ -1,0 +1,9 @@
+*.pdf
+*.aux
+*.bbl
+*.blg
+*.out
+*.run.xml
+*.synctex.gz
+*blx.bib
+*.toc
