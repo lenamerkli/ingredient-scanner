@@ -4,6 +4,9 @@
 /data/frames/*
 !/data/frames/.gitkeep
 
+/data/synthetic/*
+!/data/synthetic/.gitkeep
+
 *.kate-swp
 
 ### PyCharm template
