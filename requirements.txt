@@ -3,6 +3,7 @@ cycler==0.12.1
 ffmpeg-python==0.2.0
 fonttools==4.53.0
 future==1.0.0
+imageio==2.34.1
 kiwisolver==1.4.5
 matplotlib==3.9.0
 numpy==1.26.4

@@ -4,8 +4,8 @@
 /data/frames/*
 !/data/frames/.gitkeep
 
-/data/synthetic/*
-!/data/synthetic/.gitkeep
+/data/synthetic_frames/*
+!/data/synthetic_frames/.gitkeep
 
 *.kate-swp
 
