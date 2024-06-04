@@ -12,10 +12,19 @@ VIDEO_EXTENSIONS = [
 
 
 def relative_path(string: str) -> str:
+    """
+    Returns the absolute path of a given string by joining it with the directory of the current file.
+    :param string:
+    :return:
+    """
     return join(dirname(__file__), string)
 
 
-def main():
+def main() -> None:
+    """
+    Converts video files in the 'videos' directory to individual frames and saves them as PNG images in the 'frames' directory.
+    :return: None
+    """
     for file in tqdm(listdir(relative_path('videos'))):
         if file.split('.')[-1].strip().lower() in VIDEO_EXTENSIONS:
             (
