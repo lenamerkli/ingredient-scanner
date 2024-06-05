@@ -1,100 +1,23 @@
-import torch
-import torchvision
-import os
-import pandas as pd
-from PIL import Image
-from pathlib import Path
+from general import (
+    ConvNet,
+    current_time,
+    DEVICE,
+    IMAGE_SIZE,
+    json,
+    Path,
+    SyntheticDataset,
+    relative_path,
+    torch,
+    torchvision,
+)
 
-
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 NUM_EPOCHS = 128
 BATCH_SIZE = 4
 LEARNING_RATE = 0.0001
-IMAGE_SIZE = (72 * 3, 128 * 3)
-
-
-def relative_path(string: str) -> str:
-    return os.path.join(os.path.dirname(__file__), string)
-
-
-class SyntheticDataset(torch.utils.data.Dataset):
-    def __init__(self, train=True, transform=None):
-        if train:
-            self.image_dir = 'synthetic_frames'
-            self.data_dir = 'synthetic_frames_json'
-        else:
-            self.image_dir = 'frames'
-            self.data_dir = 'frames_json'
-        self.images = []
-        self.data = []
-        for file in sorted(os.listdir(relative_path(f"data/{self.image_dir}"))):
-            if file.split('.')[-1].strip().lower() == 'png':
-                for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
-                    if data_file.split('.')[0] == file.split('.')[0]:
-                        image = Image.open(relative_path(f"data/{self.image_dir}/{file}"))
-                        image.thumbnail(IMAGE_SIZE, Image.Resampling.LANCZOS)
-                        image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
-                        self.images.append(file)
-                        self.data.append(data_file)
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        image = Image.open(relative_path(f"tmp/{self.image_dir}/{self.images[index]}"))
-        width, height = (720, 1280)
-        data = pd.read_json(relative_path(f"data/{self.data_dir}/{self.data[index]}"))
-        if data['curvature']['top']['x'] is None:
-            data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
-        if data['curvature']['top']['y'] is None:
-            data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
-        if data['curvature']['bottom']['x'] is None:
-            data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right']['x']) / 2
-        if data['curvature']['bottom']['y'] is None:
-            data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
-        tensor_data = [
-            data['top']['left']['x'] / width,
-            data['top']['left']['y'] / height,
-            data['top']['right']['x'] / width,
-            data['top']['right']['y'] / height,
-            data['bottom']['left']['x'] / width,
-            data['bottom']['left']['y'] / height,
-            data['bottom']['right']['x'] / width,
-            data['bottom']['right']['y'] / height,
-            data['curvature']['top']['x'] / width,
-            data['curvature']['top']['y'] / height,
-            data['curvature']['bottom']['x'] / width,
-            data['curvature']['bottom']['y'] / height,
-        ]
-        tensor_data = torch.tensor(tensor_data, dtype=torch.float32).to(DEVICE)
-        if self.transform:
-            image = self.transform(image).to(DEVICE)
-        return image, tensor_data
-
-
-class ConvNet(torch.nn.Module):
-
-    def __init__(self):
-        super(ConvNet, self).__init__()
-        self.conv1 = torch.nn.Conv2d(3, 6, 5)
-        self.pool = torch.nn.MaxPool2d(2, 2)
-        self.conv2 = torch.nn.Conv2d(6, 16, 5)
-        self.fc1 = torch.nn.Linear(16 * (IMAGE_SIZE[0] // 4 - 3) * (IMAGE_SIZE[1] // 4 - 3), 256)
-        self.fc2 = torch.nn.Linear(256, 96)
-        self.fc3 = torch.nn.Linear(96, 12)
-
-    def forward(self, x):
-        x = self.pool(torch.nn.functional.relu(self.conv1(x)))
-        x = self.pool(torch.nn.functional.relu(self.conv2(x)))
-        x = x.view(-1, 16 * (IMAGE_SIZE[0] // 4 - 3) * (IMAGE_SIZE[1] // 4 - 3))
-        x = torch.nn.functional.relu(self.fc1(x))
-        x = torch.nn.functional.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
 
 
 def main():
+    start_time = current_time()
     for path in ['tmp/frames', 'tmp/synthetic_frames']:
         Path(relative_path(path)).mkdir(parents=True, exist_ok=True)
     transform = torchvision.transforms.Compose([
@@ -108,8 +31,8 @@ def main():
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     n_total_steps = len(train_loader)
-    loss = None
     i = 0
+    loss_history = []
     for epoch in range(NUM_EPOCHS):
         model.train()
         for i, (images, data) in enumerate(train_loader):
@@ -120,8 +43,9 @@ def main():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        if loss:
-            print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss.item():.6f}")
+            loss_history.append(loss.item())
+        if loss_history:
+            print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}")
     print('Finished Training')
     model.eval()
     with torch.no_grad():
@@ -134,7 +58,25 @@ def main():
             outputs = model(images)
             distance = torch.abs(outputs - data)
             n_total_distance += torch.sum(distance).item()
-        print(f"Average distance: {n_total_distance / (n_total_count * 12):.4f}")
+    average_distance = n_total_distance / (n_total_count * 12)
+    print(f"Average distance: {average_distance:.4f}")
+    time_stamp = current_time()
+    torch.save(model.state_dict(), relative_path(f"model/{time_stamp}.pt"))
+    model_data = {
+        'average_distance': average_distance,
+        'batch_size': BATCH_SIZE,
+        'image_size_x': IMAGE_SIZE[0],
+        'image_size_y': IMAGE_SIZE[1],
+        'last_loss': loss_history[-1],
+        'learning_rate': LEARNING_RATE,
+        'loss_ao10': sum(loss_history[-10:-1]) / 10.0 if len(loss_history) >= 10 else None,
+        'num_epochs': NUM_EPOCHS,
+        'start_time': start_time,
+        'type': 'base',
+    }
+    with open(relative_path(f"model/{time_stamp}.json"), 'w') as f:
+        json.dump(model_data, f, indent=2)
+    print(f"Model saved as {time_stamp}.pt")
 
 
 if __name__ == '__main__':
