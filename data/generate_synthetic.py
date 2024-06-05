@@ -48,7 +48,7 @@ def create_zoomed_image(image, data, zoom_factor=1.2):
 
     # Crop and resize to original dimensions
     cropped_image = image.crop((x0, y0, x1, y1))
-    zoomed_image = cropped_image.resize((original_width, original_height))
+    zoomed_image = cropped_image.resize((original_width, original_height), Image.Resampling.LANCZOS)
 
     # Calculate scaling factors
     scaling_factor_x = original_width / (x1 - x0)
