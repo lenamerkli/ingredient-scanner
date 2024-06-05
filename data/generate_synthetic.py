@@ -7,9 +7,57 @@ import random
 
 from video_to_frames import relative_path
 
+REPETITIONS = 12
+SEED = 2024 - 7 - 28
 
-REPETITIONS = 8
-SEED = 2024-7-28
+
+def get_bounding_box(data):
+    xs = [v["x"] for key1 in data for key2, v in data[key1].items()]
+    ys = [v["y"] for key1 in data for key2, v in data[key1].items()]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def adjust_coordinates(data, offset_x, offset_y, scaling_factor_x, scaling_factor_y):
+    adjusted_data = {}
+    for key1, key2_points in data.items():
+        adjusted_data[key1] = {}
+        for key2, point in key2_points.items():
+            adjusted_data[key1][key2] = {
+                "x": int((point["x"] - offset_x) * scaling_factor_x),
+                "y": int((point["y"] - offset_y) * scaling_factor_y)
+            }
+    return adjusted_data
+
+
+def create_zoomed_image(image, data, zoom_factor=1.2):
+    original_width, original_height = image.size
+    min_x, min_y, max_x, max_y = get_bounding_box(data)
+
+    # Calculate the zoomed region to ensure all points are included
+    width = max_x - min_x
+    height = max_y - min_y
+
+    zoomed_width = int(width * zoom_factor)
+    zoomed_height = int(height * zoom_factor)
+
+    # Ensure the zoomed region doesn't exceed the original image boundaries
+    x0 = max(0, min_x - random.randint(0, zoomed_width - width))
+    y0 = max(0, min_y - random.randint(0, zoomed_height - height))
+    x1 = min(original_width, x0 + zoomed_width)
+    y1 = min(original_height, y0 + zoomed_height)
+
+    # Crop and resize to original dimensions
+    cropped_image = image.crop((x0, y0, x1, y1))
+    zoomed_image = cropped_image.resize((original_width, original_height))
+
+    # Calculate scaling factors
+    scaling_factor_x = original_width / (x1 - x0)
+    scaling_factor_y = original_height / (y1 - y0)
+
+    # Adjust coordinates to new region
+    adjusted_data = adjust_coordinates(data, x0, y0, scaling_factor_x, scaling_factor_y)
+
+    return zoomed_image, adjusted_data
 
 
 def main():
@@ -33,59 +81,49 @@ def main():
                         data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right']['x']) / 2
                     if data['curvature']['bottom']['y'] is None:
                         data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
-                    max_floats = {
-                        'top': min(data['top']['left']['y'], data['top']['right']['y'],
-                                   data['curvature']['top']['y']),
-                        'bottom': max(data['bottom']['left']['y'], data['bottom']['right']['y'],
-                                      data['curvature']['bottom']['y']),
-                        'left': min(data['top']['left']['x'], data['bottom']['left']['x']),
-                        'right': max(data['top']['right']['x'], data['bottom']['right']['x']),
-                    }
                     with Image.open(relative_path(f"frames/{frame}")) as image:
-                        width, height = image.size[:2]
                         for repetition in range(REPETITIONS):
-                            top = random.randint(0, max_floats['top'])
-                            bottom = random.randint(0, max_floats['bottom'])
-                            left = random.randint(0, max_floats['left'])
-                            right = random.randint(0, max_floats['right'])
-                            cropped_image = image.crop((left, top, width - right, height - bottom))
-                            output_image = cropped_image.resize((width, height))
-                            output_image.save(relative_path(f"synthetic_frames/{frame.split('.')[0]}_{repetition:03}.png"))
-                            output_data = {
-                                'top': {
-                                    'left': {
-                                        'x': int(data['top']['left']['x'] - left),
-                                        'y': int(data['top']['left']['y'] - top),
-                                    },
-                                    'right': {
-                                        'x': int(data['top']['right']['x'] + right),
-                                        'y': int(data['top']['right']['y'] - top),
-                                    },
-                                },
-                                'bottom': {
-                                    'left': {
-                                        'x': int(data['bottom']['left']['x'] - left),
-                                        'y': int(data['bottom']['left']['y'] + bottom),
-                                    },
-                                    'right': {
-                                        'x': int(data['bottom']['right']['x'] + right),
-                                        'y': int(data['bottom']['right']['y'] + bottom),
-                                    },
-                                },
-                                'curvature': {
+                            zoomed_image, adjusted_data = create_zoomed_image(image, data)
+                            if repetition % 2 == 0:
+                                zoomed_image = zoomed_image.rotate(180)
+                                width, height = zoomed_image.size
+                                old_data = adjusted_data.copy()
+                                adjusted_data = {
                                     'top': {
-                                        'x': int(data['curvature']['top']['x'] - left + right),
-                                        'y': int(data['curvature']['top']['y'] - top),
+                                        'left': {
+                                            'x': width - old_data['bottom']['right']['x'],
+                                            'y': height - old_data['bottom']['right']['y'],
+                                        },
+                                        'right': {
+                                            'x': width - old_data['bottom']['left']['x'],
+                                            'y': height - old_data['bottom']['left']['y'],
+                                        },
                                     },
                                     'bottom': {
-                                        'x': int(data['curvature']['bottom']['x'] - left + right),
-                                        'y': int(data['curvature']['bottom']['y'] + bottom),
+                                        'left': {
+                                            'x': width - old_data['top']['right']['x'],
+                                            'y': height - old_data['top']['right']['y'],
+                                        },
+                                        'right': {
+                                            'x': width - old_data['top']['left']['x'],
+                                            'y': height - old_data['top']['left']['y'],
+                                        },
                                     },
-                                },
-                            }
+                                    'curvature': {
+                                        'top': {
+                                            'x': width - old_data['curvature']['bottom']['x'],
+                                            'y': height - old_data['curvature']['bottom']['y'],
+                                        },
+                                        'bottom': {
+                                            'x': width - old_data['curvature']['top']['x'],
+                                            'y': height - old_data['curvature']['top']['y'],
+                                        },
+                                    },
+                                }
+                            zoomed_image.save(relative_path(f"synthetic_frames/{frame.split('.')[0]}_{repetition:03}.png"))
                             with open(relative_path(f"synthetic_frames_json/{frame.split('.')[0]}_{repetition:03}.json"),
                                       'w') as f:
-                                dump_json(output_data, f, indent=2)
+                                dump_json(adjusted_data, f, indent=2)
                     break
 
 
