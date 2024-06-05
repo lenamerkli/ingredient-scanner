@@ -3,13 +3,14 @@ import torchvision
 import os
 import pandas as pd
 from PIL import Image
+from pathlib import Path
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-NUM_EPOCHS = 100
-BATCH_SIZE = 10
-LEARNING_RATE = 0.001
-IMAGE_SIZE = (72, 128)
+NUM_EPOCHS = 128
+BATCH_SIZE = 4
+LEARNING_RATE = 0.0001
+IMAGE_SIZE = (72 * 3, 128 * 3)
 
 
 def relative_path(string: str) -> str:
@@ -26,10 +27,13 @@ class SyntheticDataset(torch.utils.data.Dataset):
             self.data_dir = 'frames_json'
         self.images = []
         self.data = []
-        for file in sorted(os.listdir(relative_path('data/synthetic_frames'))):
+        for file in sorted(os.listdir(relative_path(f"data/{self.image_dir}"))):
             if file.split('.')[-1].strip().lower() == 'png':
-                for data_file in sorted(os.listdir(relative_path('data/synthetic_frames_json'))):
+                for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
+                        image = Image.open(relative_path(f"data/{self.image_dir}/{file}"))
+                        image.thumbnail(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                        image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
                         self.images.append(file)
                         self.data.append(data_file)
         self.transform = transform
@@ -38,10 +42,17 @@ class SyntheticDataset(torch.utils.data.Dataset):
         return len(self.images)
 
     def __getitem__(self, index):
-        image = Image.open(relative_path(f'data/synthetic_frames/{self.images[index]}'))
-        width, height = image.size
-        image.thumbnail(IMAGE_SIZE, Image.Resampling.LANCZOS)
-        data = pd.read_json(relative_path(f'data/synthetic_frames_json/{self.data[index]}'))
+        image = Image.open(relative_path(f"tmp/{self.image_dir}/{self.images[index]}"))
+        width, height = (720, 1280)
+        data = pd.read_json(relative_path(f"data/{self.data_dir}/{self.data[index]}"))
+        if data['curvature']['top']['x'] is None:
+            data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
+        if data['curvature']['top']['y'] is None:
+            data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
+        if data['curvature']['bottom']['x'] is None:
+            data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right']['x']) / 2
+        if data['curvature']['bottom']['y'] is None:
+            data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
         tensor_data = [
             data['top']['left']['x'] / width,
             data['top']['left']['y'] / height,
@@ -69,14 +80,14 @@ class ConvNet(torch.nn.Module):
         self.conv1 = torch.nn.Conv2d(3, 6, 5)
         self.pool = torch.nn.MaxPool2d(2, 2)
         self.conv2 = torch.nn.Conv2d(6, 16, 5)
-        self.fc1 = torch.nn.Linear(16 * 15 * 29, 240)
-        self.fc2 = torch.nn.Linear(240, 120)
-        self.fc3 = torch.nn.Linear(120, 12)
+        self.fc1 = torch.nn.Linear(16 * (IMAGE_SIZE[0] // 4 - 3) * (IMAGE_SIZE[1] // 4 - 3), 256)
+        self.fc2 = torch.nn.Linear(256, 96)
+        self.fc3 = torch.nn.Linear(96, 12)
 
     def forward(self, x):
         x = self.pool(torch.nn.functional.relu(self.conv1(x)))
         x = self.pool(torch.nn.functional.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 15 * 29)
+        x = x.view(-1, 16 * (IMAGE_SIZE[0] // 4 - 3) * (IMAGE_SIZE[1] // 4 - 3))
         x = torch.nn.functional.relu(self.fc1(x))
         x = torch.nn.functional.relu(self.fc2(x))
         x = self.fc3(x)
@@ -84,6 +95,8 @@ class ConvNet(torch.nn.Module):
 
 
 def main():
+    for path in ['tmp/frames', 'tmp/synthetic_frames']:
+        Path(relative_path(path)).mkdir(parents=True, exist_ok=True)
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor()
     ])
@@ -95,6 +108,8 @@ def main():
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     n_total_steps = len(train_loader)
+    loss = None
+    i = 0
     for epoch in range(NUM_EPOCHS):
         model.train()
         for i, (images, data) in enumerate(train_loader):
@@ -105,8 +120,8 @@ def main():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if (i + 1) % 20 == 0:
-                print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss.item():.4f}")
+        if loss:
+            print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss.item():.6f}")
     print('Finished Training')
     model.eval()
     with torch.no_grad():
