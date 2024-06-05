@@ -6,7 +6,7 @@ from PIL import Image
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-NUM_EPOCHS = 12
+NUM_EPOCHS = 100
 BATCH_SIZE = 10
 LEARNING_RATE = 0.001
 IMAGE_SIZE = (72, 128)
@@ -56,9 +56,9 @@ class SyntheticDataset(torch.utils.data.Dataset):
             data['curvature']['bottom']['x'] / width,
             data['curvature']['bottom']['y'] / height,
         ]
-        tensor_data = torch.tensor(tensor_data, dtype=torch.float32)
+        tensor_data = torch.tensor(tensor_data, dtype=torch.float32).to(DEVICE)
         if self.transform:
-            image = self.transform(image)
+            image = self.transform(image).to(DEVICE)
         return image, tensor_data
 
 
@@ -69,9 +69,9 @@ class ConvNet(torch.nn.Module):
         self.conv1 = torch.nn.Conv2d(3, 6, 5)
         self.pool = torch.nn.MaxPool2d(2, 2)
         self.conv2 = torch.nn.Conv2d(6, 16, 5)
-        self.fc1 = torch.nn.Linear(16 * 15 * 29, 120)
-        self.fc2 = torch.nn.Linear(120, 84)
-        self.fc3 = torch.nn.Linear(84, 12)
+        self.fc1 = torch.nn.Linear(16 * 15 * 29, 240)
+        self.fc2 = torch.nn.Linear(240, 120)
+        self.fc3 = torch.nn.Linear(120, 12)
 
     def forward(self, x):
         x = self.pool(torch.nn.functional.relu(self.conv1(x)))
@@ -84,8 +84,11 @@ class ConvNet(torch.nn.Module):
 
 
 def main():
-    train_dataset = SyntheticDataset(train=True, transform=torchvision.transforms.ToTensor())
-    test_dataset = SyntheticDataset(train=False, transform=torchvision.transforms.ToTensor())
+    transform = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor()
+    ])
+    train_dataset = SyntheticDataset(train=True, transform=transform)
+    test_dataset = SyntheticDataset(train=False, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
     model = ConvNet().to(DEVICE)
@@ -93,6 +96,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     n_total_steps = len(train_loader)
     for epoch in range(NUM_EPOCHS):
+        model.train()
         for i, (images, data) in enumerate(train_loader):
             images = images.to(DEVICE)
             data = data.to(DEVICE)
@@ -101,9 +105,10 @@ def main():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 20 == 0:
                 print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss.item():.4f}")
     print('Finished Training')
+    model.eval()
     with torch.no_grad():
         n_total_distance = 0.0
         n_total_count = 0
