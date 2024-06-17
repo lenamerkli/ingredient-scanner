@@ -1,0 +1,13 @@
+{
+  "average_distance": 0.11896746266971935,
+  "batch_size": 4,
+  "criterion": "SmoothL1Loss",
+  "image_size_x": 216,
+  "image_size_y": 384,
+  "last_loss": 0.0016114714089781046,
+  "learning_rate": 0.0001,
+  "loss_ao10": 0.0030229692114517094,
+  "num_epochs": 256,
+  "start_time": "2024-06-17_10-44-22",
+  "type": "base"
+}

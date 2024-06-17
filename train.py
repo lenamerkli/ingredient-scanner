@@ -1,5 +1,6 @@
 from general import (
     ConvNet,
+    CRITERIONS,
     current_time,
     DEVICE,
     IMAGE_SIZE,
@@ -11,9 +12,14 @@ from general import (
     torchvision,
 )
 
-NUM_EPOCHS = 128
+NUM_EPOCHS = 256
 BATCH_SIZE = 4
 LEARNING_RATE = 0.0001
+CRITERION = 'SmoothL1Loss'
+
+
+def required_loss(loss_history: list[float]) -> float:
+    return sorted(loss_history[-(NUM_EPOCHS // 10):])[1]
 
 
 def main():
@@ -28,12 +34,14 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
     model = ConvNet().to(DEVICE)
-    criterion = torch.nn.MSELoss()
+    criterion = CRITERIONS[CRITERION]()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     n_total_steps = len(train_loader)
     i = 0
     loss_history = []
-    for epoch in range(NUM_EPOCHS):
+    train = True
+    epoch = 0
+    while train:
         model.train()
         for i, (images, data) in enumerate(train_loader):
             images = images.to(DEVICE)
@@ -44,8 +52,11 @@ def main():
             loss.backward()
             optimizer.step()
             loss_history.append(loss.item())
+        epoch += 1
+        if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
+            train = False
         if loss_history:
-            print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}")
+            print(f"Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}")
     print('Finished Training')
     model.eval()
     with torch.no_grad():
@@ -65,6 +76,7 @@ def main():
     model_data = {
         'average_distance': average_distance,
         'batch_size': BATCH_SIZE,
+        'criterion': CRITERION,
         'image_size_x': IMAGE_SIZE[0],
         'image_size_y': IMAGE_SIZE[1],
         'last_loss': loss_history[-1],
