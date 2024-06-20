@@ -1,20 +1,21 @@
 from general import (
-    ConvNet,
     CRITERIONS,
-    current_time,
+    ConvNet,
     DEVICE,
     IMAGE_SIZE,
-    json,
     Path,
     SyntheticDataset,
+    current_time,
+    json,
     relative_path,
+    sqrt,
     torch,
     torchvision,
 )
 
 NUM_EPOCHS = 256
-BATCH_SIZE = 4
-LEARNING_RATE = 0.0001
+BATCH_SIZE = 16
+LEARNING_RATE = 0.0004
 CRITERION = 'SmoothL1Loss'
 
 
@@ -67,8 +68,10 @@ def main():
             images = images.to(DEVICE)
             data = data.to(DEVICE)
             outputs = model(images)
-            distance = torch.abs(outputs - data)
-            n_total_distance += torch.sum(distance).item()
+            distance = torch.abs(outputs - data).tolist()
+            for i in range(len(distance)):
+                for j in range(len(distance[i]) // 2):
+                    n_total_distance += sqrt(distance[i][2 * j] ** 2 + distance[i][2 * j + 1] ** 2)
     average_distance = n_total_distance / (n_total_count * 12)
     print(f"Average distance: {average_distance:.4f}")
     time_stamp = current_time()

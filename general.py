@@ -1,6 +1,7 @@
 from PIL import Image
 from datetime import datetime
 from pathlib import Path
+from math import sqrt
 import json
 import os
 import pandas as pd
