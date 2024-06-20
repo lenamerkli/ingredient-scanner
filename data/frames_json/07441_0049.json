@@ -21,12 +21,12 @@
   },
   "curvature": {
     "top": {
-      "x": null,
-      "y": null
+      "x": 301,
+      "y": 401
     },
     "bottom": {
-      "x": null,
-      "y": null
+      "x": 289,
+      "y": 951
     }
   }
 }
