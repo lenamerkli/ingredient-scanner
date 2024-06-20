@@ -1,13 +1,13 @@
 from os import listdir
 from tqdm import tqdm
 from json import load as load_json, dump as dump_json
-from PIL import Image
+from PIL import Image, ImageFilter
 
 import random
 
 from video_to_frames import relative_path
 
-REPETITIONS = 12
+REPETITIONS = 16
 SEED = 2024 - 7 - 28
 
 
@@ -83,6 +83,7 @@ def main():
                         data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
                     with Image.open(relative_path(f"frames/{frame}")) as image:
                         for repetition in range(REPETITIONS):
+                            noised_image = image.filter(ImageFilter.GaussianBlur(4))
                             zoomed_image, adjusted_data = create_zoomed_image(image, data)
                             if repetition % 2 == 0:
                                 zoomed_image = zoomed_image.rotate(180)
