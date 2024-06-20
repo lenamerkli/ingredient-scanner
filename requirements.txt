@@ -51,6 +51,7 @@ setuptools==70.0.0
 six==1.16.0
 sympy==1.12.1
 thonny==4.1.4
+tk==0.1.0
 tomlkit==0.12.5
 torch==2.3.0
 torchvision==0.18.0
