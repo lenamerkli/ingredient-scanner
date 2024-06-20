@@ -2,6 +2,7 @@ from PIL import Image
 from datetime import datetime
 from pathlib import Path
 from math import sqrt
+from tqdm import tqdm
 import json
 import os
 import pandas as pd

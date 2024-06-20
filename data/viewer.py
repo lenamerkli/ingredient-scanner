@@ -33,6 +33,7 @@ class ImageApp:
 
         self.directories = [d for d in os.listdir('.') if (os.path.isdir(d) and
                                                            not any(i in d for i in ['py', 'json', 'video']))]
+        self.directories.append('rhlf')
         self.dir_dropdown = ttk.Combobox(root, textvariable=self.current_directory, values=self.directories)
         self.dir_dropdown.grid(row=0, column=1, padx=10, pady=5)
         self.dir_dropdown.bind("<<ComboboxSelected>>", self.update_file_list)
@@ -73,7 +74,7 @@ class ImageApp:
         self.canvas.bind("<Button-1>", self.log_click_coordinates)
 
     def update_file_list(self, event=None):
-        directory = self.current_directory.get()
+        directory = self.current_directory.get().replace('rhlf', 'frames')
         self.files = sorted(f for f in os.listdir(directory) if f.endswith('.png'))
         self.file_dropdown['values'] = self.files
 
@@ -82,7 +83,7 @@ class ImageApp:
             self.load_image()
 
     def load_image(self, event=None):
-        directory = self.current_directory.get()
+        directory = self.current_directory.get().replace('rhlf', 'frames')
         filename = self.current_file.get()
         path = os.path.join(directory, filename)
 
