@@ -4,7 +4,7 @@ from general import (
     torch,
     relative_path,
     os,
-    ConvNet,
+    NeuralNet,
     DEVICE,
     IMAGE_SIZE,
     Image,
@@ -18,7 +18,7 @@ ORIGINAL_SIZE = (720, 1280)
 def main() -> None:
     model_name = sorted([i for i in os.listdir(relative_path('models')) if i.endswith('.pt')])[-1]
     model_weights = torch.load(relative_path(f'models/{model_name}'))
-    model = ConvNet()
+    model = NeuralNet()
     model.load_state_dict(model_weights)
     model.to(DEVICE)
     transform = torchvision.transforms.Compose([
@@ -29,7 +29,7 @@ def main() -> None:
         for file in tqdm(os.listdir(relative_path('data/frames'))):
             if file.endswith('.png'):
                 image = Image.open(relative_path(f"data/frames/{file}"))
-                image.thumbnail(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
                 image = transform(image).to(DEVICE)
                 output = model(image).tolist()[0]
                 data = {

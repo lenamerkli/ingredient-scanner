@@ -1,6 +1,6 @@
 from general import (
     CRITERIONS,
-    ConvNet,
+    NeuralNet,
     DEVICE,
     IMAGE_SIZE,
     Path,
@@ -13,52 +13,13 @@ from general import (
     torchvision,
 )
 
-NUM_EPOCHS = 256
-BATCH_SIZE = 16
-LEARNING_RATE = 0.0004
-CRITERION = 'SmoothL1Loss'
+NUM_EPOCHS = 64
+BATCH_SIZE = 4
+LEARNING_RATE = 0.0005
+CRITERION = 'L1Loss'
 
 
-def required_loss(loss_history: list[float]) -> float:
-    return sorted(loss_history[-(NUM_EPOCHS // 10):])[1]
-
-
-def main():
-    start_time = current_time()
-    for path in ['tmp/frames', 'tmp/synthetic_frames']:
-        Path(relative_path(path)).mkdir(parents=True, exist_ok=True)
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor()
-    ])
-    train_dataset = SyntheticDataset(train=True, transform=transform)
-    test_dataset = SyntheticDataset(train=False, transform=transform)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
-    model = ConvNet().to(DEVICE)
-    criterion = CRITERIONS[CRITERION]()
-    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
-    n_total_steps = len(train_loader)
-    i = 0
-    loss_history = []
-    train = True
-    epoch = 0
-    while train:
-        model.train()
-        for i, (images, data) in enumerate(train_loader):
-            images = images.to(DEVICE)
-            data = data.to(DEVICE)
-            outputs = model(images)
-            loss = criterion(outputs, data)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            loss_history.append(loss.item())
-        epoch += 1
-        if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
-            train = False
-        if loss_history:
-            print(f"Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}")
-    print('Finished Training')
+def calculate_eval(model: NeuralNet, test_loader: torch.utils.data.DataLoader) -> float:
     model.eval()
     with torch.no_grad():
         n_total_distance = 0.0
@@ -72,7 +33,65 @@ def main():
             for i in range(len(distance)):
                 for j in range(len(distance[i]) // 2):
                     n_total_distance += sqrt(distance[i][2 * j] ** 2 + distance[i][2 * j + 1] ** 2)
-    average_distance = n_total_distance / (n_total_count * 12)
+    return n_total_distance / (n_total_count * 12)
+
+
+def required_loss(loss_history: list[float]) -> float:
+    array = sorted(loss_history[-(NUM_EPOCHS // 8):])
+    if len(array) >= 2:
+        return array[1]
+    return array[0]
+
+
+def main():
+    global NUM_EPOCHS
+    start_time = current_time()
+    for path in ['tmp/frames', 'tmp/synthetic_frames']:
+        Path(relative_path(path)).mkdir(parents=True, exist_ok=True)
+    transform = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor()
+    ])
+    train_dataset = SyntheticDataset(train=True, transform=transform)
+    test_dataset = SyntheticDataset(train=False, transform=transform)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
+    model = NeuralNet().to(DEVICE)
+    criterion = CRITERIONS[CRITERION]()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=0.0001)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=NUM_EPOCHS // 10, gamma=0.1)
+    n_total_steps = len(train_loader)
+    i = 0
+    loss_history = []
+    train = True
+    epoch = 0
+    while train:
+        try:
+            model.train()
+            for i, (images, data) in enumerate(train_loader):
+                images = images.to(DEVICE)
+                data = data.to(DEVICE)
+                outputs = model(images)
+                loss = criterion(outputs, data)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                loss_history.append(loss.item())
+            epoch += 1
+            scheduler.step()
+        except KeyboardInterrupt:
+            if epoch >= NUM_EPOCHS:
+                raise KeyboardInterrupt
+            else:
+                train = False
+                NUM_EPOCHS = epoch
+        if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
+            train = False
+        if loss_history:
+            average_distance = calculate_eval(model, test_loader)
+            print(f"Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}, "
+                  f"Average distance: {average_distance:.4f}")
+    print('Finished Training')
+    average_distance = calculate_eval(model, test_loader)
     print(f"Average distance: {average_distance:.4f}")
     time_stamp = current_time()
     torch.save(model.state_dict(), relative_path(f"models/{time_stamp}.pt"))

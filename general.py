@@ -11,11 +11,12 @@ import torchvision
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-IMAGE_SIZE = (72 * 3, 128 * 3)
+IMAGE_SIZE = (224, 224)
 CRITERIONS = {
     'BCELoss': torch.nn.BCELoss,
     'CTCLoss': torch.nn.CTCLoss,
     'CrossEntropyLoss': torch.nn.CrossEntropyLoss,
+    'L1Loss': torch.nn.L1Loss,
     'MSELoss': torch.nn.MSELoss,
     'NLLLoss': torch.nn.NLLLoss,
     'SmoothL1Loss': torch.nn.SmoothL1Loss,
@@ -46,7 +47,7 @@ class SyntheticDataset(torch.utils.data.Dataset):
                 for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
                         image = Image.open(relative_path(f"data/{self.image_dir}/{file}"))
-                        image.thumbnail(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                        image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
                         image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
                         width, height = (720, 1280)
                         data = pd.read_json(relative_path(f"data/{self.data_dir}/{data_file}"))
@@ -74,6 +75,8 @@ class SyntheticDataset(torch.utils.data.Dataset):
                             data['curvature']['bottom']['x'] / width,
                             data['curvature']['bottom']['y'] / height,
                         ]
+                        if any([0.0 > x or 1.0 < x for x in tensor_data]):
+                            continue
                         tensor_data = torch.tensor(tensor_data, dtype=torch.float32).to(DEVICE)
                         if self.transform:
                             image = self.transform(image).to(DEVICE)
@@ -89,27 +92,52 @@ class SyntheticDataset(torch.utils.data.Dataset):
         return image, data
 
 
-class ConvNet(torch.nn.Module):
+class NeuralNet(torch.nn.Module):
     def __init__(self):
-        super(ConvNet, self).__init__()
-        self.conv1 = torch.nn.Conv2d(3, 16, 5)
-        self.pool1 = torch.nn.MaxPool2d(2, 2)
-        self.conv2 = torch.nn.Conv2d(16, 32, 5)
-        self.pool2 = torch.nn.MaxPool2d(2, 2)
-        self.conv3 = torch.nn.Conv2d(32, 64, 3)
-        self.pool3 = torch.nn.MaxPool2d(2, 2)
-        self.fc1 = torch.nn.Linear(64 * (IMAGE_SIZE[0] // 8 - 3) * (IMAGE_SIZE[1] // 8 - 3), 512)
-        self.fc2 = torch.nn.Linear(512, 256)
-        self.fc3 = torch.nn.Linear(256, 96)
-        self.fc4 = torch.nn.Linear(96, 12)
+        super(NeuralNet, self).__init__()
+
+        # Load pre-trained ResNet model
+        self.backbone = torchvision.models.resnet18(pretrained=True)
+
+        # Modify the last layer to output 12 values
+        self.backbone.fc = torch.nn.Linear(self.backbone.fc.in_features, 12)
+
+        # Add a custom head for key-point detection
+        self.head = torch.nn.Sequential(
+            torch.nn.Conv2d(512, 256, kernel_size=3, padding=1),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv2d(64, 12, kernel_size=1),
+            torch.nn.AdaptiveAvgPool2d(1)
+        )
 
     def forward(self, x):
-        x = self.pool1(torch.nn.functional.relu(self.conv1(x)))
-        x = self.pool2(torch.nn.functional.relu(self.conv2(x)))
-        x = self.pool3(torch.nn.functional.relu(self.conv3(x)))
-        x = x.view(-1, 64 * (IMAGE_SIZE[0] // 8 - 3) * (IMAGE_SIZE[1] // 8 - 3))
-        x = torch.nn.functional.relu(self.fc1(x))
-        x = torch.nn.functional.relu(self.fc2(x))
-        x = torch.nn.functional.relu(self.fc3(x))
-        x = self.fc4(x)
+        # Check if we need to unsqueeze
+        if len(x.shape) == 3:  # Shape [C, H, W]
+            x = x.unsqueeze(0)  # Shape [1, C, H, W]
+
+        # Resize input to match ResNet input size if necessary
+        if x.shape[-2:] != (224, 224):
+            x = torch.nn.functional.interpolate(x, size=(224, 224), mode='bilinear', align_corners=False)
+
+        # Pass input through the backbone
+        x = self.backbone.conv1(x)
+        x = self.backbone.bn1(x)
+        x = self.backbone.relu(x)
+        x = self.backbone.maxpool(x)
+
+        x = self.backbone.layer1(x)
+        x = self.backbone.layer2(x)
+        x = self.backbone.layer3(x)
+        x = self.backbone.layer4(x)
+
+        # Pass input through the custom head
+        x = self.head(x)
+
+        # Flatten the output
+        x = x.view(x.size(0), -1)
+
         return x
