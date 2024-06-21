@@ -23,6 +23,8 @@ class ImageApp:
         self.image = None
         self.photo = None
 
+        self.clicks = []
+
         # Initialize directory and file variables
         self.current_directory = tk.StringVar()
         self.current_file = tk.StringVar()
@@ -97,6 +99,8 @@ class ImageApp:
         self.canvas.config(width=image.width, height=image.height)
         self.canvas.create_image(0, 0, image=self.photo, anchor='nw')
 
+        self.clicks = []
+
         self.adjust_canvas_size(None)
         self.load_points()
 
@@ -170,7 +174,36 @@ class ImageApp:
             # Get the image x and y positions
             image_x = int(self.image.width * (canvas_x / self.canvas.winfo_width()))
             image_y = int(self.image.height * (canvas_y / self.canvas.winfo_height()))
-            print(f"Clicked at image coordinates: ({image_x}, {image_y})")
+            self.clicks.append({'x': image_x, 'y': image_y})
+            filename = self.current_file.get()
+            base, _ = os.path.splitext(filename)
+            print(f"[{base}] Clicked at image coordinates: ({image_x}, {image_y})")
+            if len(self.clicks) >= 4:
+                data = {
+                    'top': {
+                        'left': self.clicks[0],
+                        'right': self.clicks[1],
+                    },
+                    'bottom': {
+                        'left': self.clicks[2],
+                        'right': self.clicks[3],
+                    },
+                    'curvature': {
+                        'top': {
+                            'x': None,
+                            'y': None,
+                        },
+                        'bottom': {
+                            'x': None,
+                            'y': None,
+                        },
+                    }
+                }
+                if len(self.clicks) >= 5:
+                    data['curvature']['top'] = self.clicks[4]
+                    if len(self.clicks) >= 6:
+                        data['curvature']['bottom'] = self.clicks[5]
+                print(json.dumps(data, indent=2))
         else:
             print("Clicked outside the bounds of the image.")
 
