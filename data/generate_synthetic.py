@@ -263,7 +263,7 @@ def main():
                     with Image.open(relative_path(f"frames/{frame}")) as original_image:
                         index = 0
                         for repetition in range(REPETITIONS):
-                            for settings_int in range(2 ** num_settings - 1):
+                            for settings_int in range(2 ** num_settings):
                                 settings = bin(settings_int)[2:].zfill(num_settings)
                                 if settings.count('1') >= 1:
                                     data = copy.deepcopy(original_data)
