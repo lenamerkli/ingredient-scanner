@@ -1,5 +1,6 @@
 from json import load as load_json, dump as dump_json
 from PIL import Image, ImageOps, ImageEnhance
+from tqdm import tqdm
 
 import os
 import copy
@@ -242,7 +243,9 @@ def main():
     """
     num_settings = 4
     random.seed(SEED)
-    for file in sorted(os.listdir(relative_path('frames_json'))):
+    files = sorted(os.listdir(relative_path('frames_json')))
+    progress_bar = tqdm(total=len(files)*(num_settings - 1)*REPETITIONS)
+    for file in files:
         if file.split('.')[-1].strip().lower() == 'json':
             with open(relative_path(f"frames_json/{file}"), 'r') as f:
                 original_data: dict = load_json(f)
@@ -283,7 +286,6 @@ def main():
                                         dump_json(data, f, indent=2)
                                     del data
                                     del image
-                                    print(f"Image: {frame.split('.')[0]}, Settings: {settings}, Index: {index}")
                                     index += 1
                     break
 
