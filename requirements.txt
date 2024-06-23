@@ -57,8 +57,8 @@ tbb==2021.13.0
 thonny==4.1.4
 tk==0.1.0
 tomlkit==0.12.5
-torch==2.3.0
-torchvision==0.18.0
+torch==2.3.1+cu121
+torchvision==0.18.1+cu121
 tqdm==4.66.4
 typing_extensions==4.12.1
 tzdata==2024.1
