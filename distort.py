@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
-from general import relative_path, json
+from general import relative_path, json, tqdm, os, ORIGINAL_SIZE
+
+
+MARGIN = 0.1
 
 
 def generate_grid(nx, ny, corners):
@@ -15,29 +18,38 @@ def generate_grid(nx, ny, corners):
     grid_x = np.zeros((ny, nx), dtype=np.float32)
     grid_y = np.zeros((ny, nx), dtype=np.float32)
 
-    # Interpolate the top and bottom curves
-    top_curve_x = np.linspace(tl[0], tr[0], nx)
-    top_curve_y = np.linspace(tl[1], tr[1], nx)
-    bottom_curve_x = np.linspace(bl[0], br[0], nx)
-    bottom_curve_y = np.linspace(bl[1], br[1], nx)
+    # Create linear interpolations for the sides
+    left_x = np.linspace(tl[0], bl[0], ny)
+    left_y = np.linspace(tl[1], bl[1], ny)
+    right_x = np.linspace(tr[0], br[0], ny)
+    right_y = np.linspace(tr[1], br[1], ny)
 
-    curvature_top_x = np.linspace(tl[0], tr[0], nx)
-    curvature_top_y = np.linspace(tl[1], tr[1], nx) + (tm[1] - np.mean([tl[1], tr[1]])) * np.sin(
-        np.linspace(0, np.pi, nx))
+    # Adjust the top and bottom sides to include curvature
+    top_x = np.linspace(tl[0], tr[0], nx)
+    top_y = np.linspace(tl[1], tr[1], nx)
+    bottom_x = np.linspace(bl[0], br[0], nx)
+    bottom_y = np.linspace(bl[1], br[1], nx)
 
-    curvature_bottom_x = np.linspace(bl[0], br[0], nx)
-    curvature_bottom_y = np.linspace(bl[1], br[1], nx) + (bm[1] - np.mean([bl[1], br[1]])) * np.sin(
-        np.linspace(0, np.pi, nx))
+    # Curvature adjustments
+    # Adjust by sine curve interpolation between middle and edge curvature points
+    top_curve_adjust = ((tm[1] - np.mean([tl[1], tr[1]])) *
+                        np.sin(np.linspace(0, np.pi, nx)))
+    bottom_curve_adjust = ((bm[1] - np.mean([bl[1], br[1]])) *
+                           np.sin(np.linspace(0, np.pi, nx)))
+
+    top_y += top_curve_adjust
+    bottom_y += bottom_curve_adjust
 
     for i in range(ny):
-        t = i / (ny - 1)
-        inter_curv_top_x = (1 - t) * top_curve_x + t * curvature_top_x
-        inter_curv_top_y = (1 - t) * top_curve_y + t * curvature_top_y
-        inter_curv_bottom_x = (1 - t) * curvature_bottom_x + t * bottom_curve_x
-        inter_curv_bottom_y = (1 - t) * curvature_bottom_y + t * bottom_curve_y
+        inter_top_x = np.linspace(top_x[i], bottom_x[i], nx)
+        inter_top_y = np.linspace(top_y[i], bottom_y[i], nx)
 
-        grid_x[i, :] = (1 - t) * inter_curv_top_x + t * inter_curv_bottom_x
-        grid_y[i, :] = (1 - t) * inter_curv_top_y + t * inter_curv_bottom_y
+        inter_bottom_x = np.linspace(top_x[i], bottom_x[i], nx)
+        inter_bottom_y = np.linspace(top_y[i], bottom_y[i], nx)
+
+        t = i / (ny - 1)
+        grid_x[i, :] = (1 - t) * inter_top_x + t * inter_bottom_x
+        grid_y[i, :] = (1 - t) * inter_top_y + t * inter_bottom_y
 
     return grid_x, grid_y
 
@@ -50,48 +62,56 @@ def apply_custom_transform(image, grid_x, grid_y):
     :param grid_y: Y coordinates of the destination grid.
     :return: Warped image with the custom transform applied.
     """
-    warped = cv2.remap(image, grid_x, grid_y, cv2.INTER_CUBIC)
+    warped = cv2.remap(image, grid_x, grid_y, cv2.INTER_LANCZOS4)
+    # rotate 90 degrees to the right due to the remapping
+    warped = cv2.rotate(warped, cv2.ROTATE_90_CLOCKWISE)
+    # mirror the image due to the remapping
+    warped = cv2.flip(warped, 1)
     return warped
 
 
 def main():
-    # load the image and grab the points from the user
-    image = cv2.imread(relative_path('data/frames/07432_0007.png'))
-    with open(relative_path('data/frames_json/07432_0007.json'), 'r') as json_file:
-        data = json.load(json_file)
-    if data['curvature']['top']['x'] is None:
-        data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
-    if data['curvature']['top']['y'] is None:
-        data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
-    if data['curvature']['bottom']['x'] is None:
-        data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right']['x']) / 2
-    if data['curvature']['bottom']['y'] is None:
-        data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
-    points = np.array([
-        (data['top']['left']['x'], data['top']['left']['y']),
-        (data['top']['right']['x'], data['top']['right']['y']),
-        (data['bottom']['left']['x'], data['bottom']['left']['y']),
-        (data['bottom']['right']['x'], data['bottom']['right']['y']),
-        (data['curvature']['top']['x'], data['curvature']['top']['y']),
-        (data['curvature']['bottom']['x'], data['curvature']['bottom']['y']),
-    ])
+    for file in tqdm(os.listdir(relative_path('data/frames'))):
+        if file.endswith('.png') and os.path.exists(relative_path(f'data/frames_json/{file.rsplit(".", 1)[0]}.json')):
+            image = cv2.imread(relative_path(f"data/frames/{file}"))
+            with open(relative_path(f"data/frames_json/{file.rsplit('.', 1)[0]}.json"), 'r') as json_file:
+                data = json.load(json_file)
+            if data['curvature']['top']['x'] is None:
+                data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
+            if data['curvature']['top']['y'] is None:
+                data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
+            if data['curvature']['bottom']['x'] is None:
+                data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right']['x']) / 2
+            if data['curvature']['bottom']['y'] is None:
+                data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
+            points = np.array([
+                (data['top']['left']['x'] * (1 - MARGIN),
+                 data['top']['left']['y'] * (1 - MARGIN)),
+                (min(data['top']['right']['x'] * (1 + MARGIN), ORIGINAL_SIZE[0] - 1),
+                 data['top']['right']['y'] * (1 - MARGIN)),
+                (data['bottom']['left']['x'] * (1 - MARGIN),
+                 min(data['bottom']['left']['y'] * (1 + MARGIN), ORIGINAL_SIZE[1] - 1)),
+                (min(data['bottom']['right']['x'] * (1 + MARGIN), ORIGINAL_SIZE[0] - 1),
+                 min(data['bottom']['right']['y'] * (1 + MARGIN), ORIGINAL_SIZE[1] - 1)),
+                (data['curvature']['top']['x'],
+                 data['curvature']['top']['y'] * (1 - MARGIN)),
+                (data['curvature']['bottom']['x'],
+                 min(data['curvature']['bottom']['y'] * (1 + MARGIN), ORIGINAL_SIZE[1] - 1)),
+            ])
 
-    # Grid size aka. number of divisions in the grid
-    nx, ny = 1024, 1024
+            # Grid size aka. number of divisions in the grid
+            nx, ny = 4096, 4096
 
-    # Generate the grid
-    grid_x, grid_y = generate_grid(nx, ny, points)
+            # Generate the grid
+            grid_x, grid_y = generate_grid(nx, ny, points)
 
-    # Apply the custom transformation
-    warped_image = apply_custom_transform(image, grid_x, grid_y)
+            # Apply the custom transformation
+            warped_image = apply_custom_transform(image, grid_x, grid_y)
 
-    if warped_image is not None:
-        # show the original and warped images
-        cv2.imshow("Warped", warped_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    else:
-        print("Failed to warp the image.")
+            if warped_image is not None:
+                cv2.imwrite(relative_path(f"data2/frames/{file}"), warped_image)
+            else:
+                print(f"Could not apply transformation to {file}")
 
 
 if __name__ == '__main__':

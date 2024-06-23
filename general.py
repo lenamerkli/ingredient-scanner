@@ -12,6 +12,7 @@ import torchvision
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 IMAGE_SIZE = (224, 224)
+ORIGINAL_SIZE = (720, 1280)
 CRITERIONS = {
     'BCELoss': torch.nn.BCELoss,
     'CTCLoss': torch.nn.CTCLoss,
