@@ -70,7 +70,8 @@ def apply_custom_transform(image, grid_x, grid_y, aspect_ratio):
     # mirror the image due to the remapping
     warped = cv2.flip(warped, 1)
     # adjust for the aspect ratio
-    warped = cv2.resize(warped, (int(aspect_ratio[0] * GRID_SIZE), int(aspect_ratio[1] * GRID_SIZE)))
+    warped = cv2.resize(warped, (int(aspect_ratio[0] * GRID_SIZE), int(aspect_ratio[1] * GRID_SIZE)),
+                        interpolation=cv2.INTER_LANCZOS4)
     return warped
 
 
