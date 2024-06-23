@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
-from general import relative_path, json, tqdm, os, ORIGINAL_SIZE
+from general import relative_path, json, tqdm, os, ORIGINAL_SIZE, sqrt
 
 
 MARGIN = 0.1
+GRID_SIZE = 4096
 
 
 def generate_grid(nx, ny, corners):
@@ -54,9 +55,10 @@ def generate_grid(nx, ny, corners):
     return grid_x, grid_y
 
 
-def apply_custom_transform(image, grid_x, grid_y):
+def apply_custom_transform(image, grid_x, grid_y, aspect_ratio):
     """
     Apply a custom transformation defined by grid mapping.
+    :param aspect_ratio: Aspect ratio of the output image.
     :param image: Input image.
     :param grid_x: X coordinates of the destination grid.
     :param grid_y: Y coordinates of the destination grid.
@@ -67,6 +69,8 @@ def apply_custom_transform(image, grid_x, grid_y):
     warped = cv2.rotate(warped, cv2.ROTATE_90_CLOCKWISE)
     # mirror the image due to the remapping
     warped = cv2.flip(warped, 1)
+    # adjust for the aspect ratio
+    warped = cv2.resize(warped, (int(aspect_ratio[0] * GRID_SIZE), int(aspect_ratio[1] * GRID_SIZE)))
     return warped
 
 
@@ -100,13 +104,28 @@ def main():
             ])
 
             # Grid size aka. number of divisions in the grid
-            nx, ny = 4096, 4096
+            nx, ny = GRID_SIZE, GRID_SIZE
 
             # Generate the grid
             grid_x, grid_y = generate_grid(nx, ny, points)
 
+            # Calculate new aspect ratio
+            aspect_ratio = (
+                (sqrt((data['top']['right']['x'] - data['top']['left']['x']) ** 2 +
+                      (data['top']['right']['y'] - data['top']['left']['y']) ** 2) +
+                 sqrt((data['bottom']['right']['x'] - data['bottom']['left']['x']) ** 2 +
+                      (data['bottom']['right']['y'] - data['bottom']['left']['y']) ** 2)) / 2,
+                (sqrt((data['top']['left']['x'] - data['bottom']['left']['x']) ** 2 +
+                      (data['top']['left']['y'] - data['bottom']['left']['y']) ** 2) +
+                 sqrt((data['top']['right']['x'] - data['bottom']['right']['x']) ** 2 +
+                      (data['top']['right']['y'] - data['bottom']['right']['y']) ** 2)) / 2
+            )
+            aspect_ratio = (1, aspect_ratio[1] / aspect_ratio[0])\
+                if aspect_ratio[0] <= aspect_ratio[1]\
+                else (aspect_ratio[0] / aspect_ratio[1], 1)
+
             # Apply the custom transformation
-            warped_image = apply_custom_transform(image, grid_x, grid_y)
+            warped_image = apply_custom_transform(image, grid_x, grid_y, aspect_ratio)
 
             if warped_image is not None:
                 cv2.imwrite(relative_path(f"data2/frames/{file}"), warped_image)
