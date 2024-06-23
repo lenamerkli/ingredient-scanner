@@ -37,6 +37,7 @@ nvidia-cusparse-cu12==12.4.1.24
 nvidia-nvjitlink-cu12==12.5.40
 nvidia-nvtx-cu12==12.5.39
 nvidia-pyindex==1.0.9
+opencv-python==4.10.0.84
 packaging==24.0
 pandas==2.2.2
 parso==0.8.4
@@ -58,6 +59,7 @@ thonny==4.1.4
 tk==0.1.0
 tomlkit==0.12.5
 torch==2.3.1+cu121
+torchaudio==2.3.1+cu121
 torchvision==0.18.1+cu121
 tqdm==4.66.4
 typing_extensions==4.12.1
