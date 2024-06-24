@@ -1,12 +1,16 @@
 import easyocr
 import requests
 import base64
+import torch
 from dotenv import load_dotenv
-
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.generation import GenerationConfig
 from general import relative_path, tqdm, os, json, Image
 
 MAX_SIZE = 5_000_000
-ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
+# ENGINE = ['easyocr']
+# ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
+ENGINE = ['Qwen-VL', 'Qwen-VL-Chat']
 with open(relative_path('data2/prompt.md'), 'r', encoding='utf-8') as _f:
     PROMPT = _f.read()
 
@@ -78,6 +82,21 @@ def main():
         with open(relative_path(f"data2/frames_claude/{file}.json"), 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
         print(data)
+    elif ENGINE[0] == 'Qwen-VL':
+        tokenizer = AutoTokenizer.from_pretrained(f"Qwen/{ENGINE[1]}", trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(f"Qwen/{ENGINE[1]}", device_map='cuda', trust_remote_code=True,
+                                                     bf16=True).eval()
+        for file in tqdm(os.listdir(relative_path('data2/frames'))):
+            if file.endswith('.png') and not os.path.exists(relative_path(f"data2/frames_qwen_vl/{file.rsplit('.', 1)[0]}.json")):
+                query = tokenizer.from_list_format([
+                    {'image': relative_path(f'data2/frames/{file}')},
+                    {'text': PROMPT},
+                ])
+                response, history = model.chat(tokenizer, query=query, history=None)
+                with open(relative_path(f"data2/frames_qwen_vl/{file.rsplit('.', 1)[0]}.txt"), 'w',
+                          encoding='utf-8') as f:
+                    f.write(str(response) + '\n')
+                print(response)
 
 
 if __name__ == '__main__':
