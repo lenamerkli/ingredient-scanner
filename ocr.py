@@ -3,14 +3,15 @@ import requests
 import base64
 import torch
 from dotenv import load_dotenv
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers.generation import GenerationConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
 from general import relative_path, tqdm, os, json, Image
 
 MAX_SIZE = 5_000_000
 # ENGINE = ['easyocr']
-# ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
-ENGINE = ['Qwen-VL', 'Qwen-VL-Chat']
+ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
+# ENGINE = ['Qwen-VL', 'Qwen-VL-Chat']
+# ENGINE = ['MiniCPM-V-2']
+SEED = 2024 - 7 - 28
 with open(relative_path('data2/prompt.md'), 'r', encoding='utf-8') as _f:
     PROMPT = _f.read()
 
@@ -18,6 +19,7 @@ load_dotenv()
 
 
 def main():
+    torch.manual_seed(SEED)
     if ENGINE[0] == 'easyocr':
         reader = easyocr.Reader(['de', 'fr', 'en'], gpu=True)
         for file in tqdm(os.listdir(relative_path('data2/frames'))):
@@ -61,19 +63,19 @@ def main():
                 'messages': [
                     {
                         'role': 'user', 'content': [
-                            {
-                                'type': 'image',
-                                'source': {
-                                    'type': 'base64',
-                                    'media_type': 'image/webp',
-                                    'data': image,
-                                },
+                        {
+                            'type': 'image',
+                            'source': {
+                                'type': 'base64',
+                                'media_type': 'image/webp',
+                                'data': image,
                             },
-                            {
-                                'type': 'text',
-                                'text': PROMPT,
-                            },
-                        ],
+                        },
+                        {
+                            'type': 'text',
+                            'text': PROMPT,
+                        },
+                    ],
                     },
                 ],
             }),
@@ -87,13 +89,41 @@ def main():
         model = AutoModelForCausalLM.from_pretrained(f"Qwen/{ENGINE[1]}", device_map='cuda', trust_remote_code=True,
                                                      bf16=True).eval()
         for file in tqdm(os.listdir(relative_path('data2/frames'))):
-            if file.endswith('.png') and not os.path.exists(relative_path(f"data2/frames_qwen_vl/{file.rsplit('.', 1)[0]}.json")):
+            if file.endswith('.png') and not os.path.exists(
+                    relative_path(f"data2/frames_qwen_vl/{file.rsplit('.', 1)[0]}.json")):
                 query = tokenizer.from_list_format([
                     {'image': relative_path(f'data2/frames/{file}')},
                     {'text': PROMPT},
                 ])
                 response, history = model.chat(tokenizer, query=query, history=None)
                 with open(relative_path(f"data2/frames_qwen_vl/{file.rsplit('.', 1)[0]}.txt"), 'w',
+                          encoding='utf-8') as f:
+                    f.write(str(response) + '\n')
+                print(response)
+    elif ENGINE[0] == 'MiniCPM-V-2':
+        model = AutoModel.from_pretrained('openbmb/MiniCPM-V-2', trust_remote_code=True, torch_dtype=torch.bfloat16)
+        model = model.to(device='cuda', dtype=torch.bfloat16)
+        tokenizer = AutoTokenizer.from_pretrained('openbmb/MiniCPM-V-2', trust_remote_code=True)
+        model.eval()
+        for file in tqdm(os.listdir(relative_path('data2/frames'))):
+            if file.endswith('.png') and not os.path.exists(
+                    relative_path(f"data2/frames_minicpm_v2/{file.rsplit('.', 1)[0]}.json")):
+                image = Image.open(relative_path(f'data2/frames/{file}'))
+                msgs = [
+                    {
+                        'role': 'user',
+                        'content': PROMPT,
+                    }
+                ]
+                response, context, _ = model.chat(
+                    image=image,
+                    msgs=msgs,
+                    context=None,
+                    tokenizer=tokenizer,
+                    sampling=True,
+                    temperature=0.7
+                )
+                with open(relative_path(f"data2/frames_minicpm_v2/{file.rsplit('.', 1)[0]}.txt"), 'w',
                           encoding='utf-8') as f:
                     f.write(str(response) + '\n')
                 print(response)
