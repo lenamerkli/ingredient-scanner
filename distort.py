@@ -128,8 +128,21 @@ def main():
             # Apply the custom transformation
             warped_image = apply_custom_transform(image, grid_x, grid_y, aspect_ratio)
 
-            if warped_image is not None:
-                cv2.imwrite(relative_path(f"data2/frames/{file}"), warped_image)
+            # Sharpen the image
+            # Apply Gaussian blur to reduce noise
+            blurred = cv2.GaussianBlur(warped_image, (0, 0), 3)
+
+            # Apply unsharp mask
+            sharpened = cv2.addWeighted(warped_image, 1.5, blurred, -0.5, 0)
+
+            # Apply custom sharpening kernel
+            kernel = np.array([[-1, -1, -1],
+                               [-1, 9, -1],
+                               [-1, -1, -1]])
+            sharpened_image = cv2.filter2D(sharpened, -1, kernel)
+
+            if sharpened_image is not None:
+                cv2.imwrite(relative_path(f"data2/frames/{file}"), sharpened_image)
             else:
                 print(f"Could not apply transformation to {file}")
 
