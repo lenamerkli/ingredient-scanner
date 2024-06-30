@@ -1,8 +1,8 @@
 /servernode3
 /test
 
-/data/frames/*
-!/data/frames/.gitkeep
+/data/full_images/frames/*
+!/data/full_images/frames/.gitkeep
 
 *.kate-swp
 

@@ -26,9 +26,9 @@ def main() -> None:
     ])
     model.eval()
     with torch.no_grad():
-        for file in tqdm(os.listdir(relative_path('data/frames'))):
+        for file in tqdm(os.listdir(relative_path('data/full_images/frames'))):
             if file.endswith('.png'):
-                image = Image.open(relative_path(f"data/frames/{file}"))
+                image = Image.open(relative_path(f"data/full_images/frames/{file}"))
                 image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
                 image = transform(image).to(DEVICE)
                 output = model(image).tolist()[0]
@@ -64,7 +64,7 @@ def main() -> None:
                         },
                     },
                 }
-                with open(relative_path(f"data/rhlf_json/{file.split('.')[0]}.json"), 'w') as f:
+                with open(relative_path(f"data/full_images/rhlf_json/{file.split('.')[0]}.json"), 'w') as f:
                     json.dump(data, f, indent=2)
 
 

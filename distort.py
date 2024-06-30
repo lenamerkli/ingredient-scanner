@@ -142,7 +142,7 @@ def main():
             sharpened_image = cv2.filter2D(sharpened, -1, kernel)
 
             if sharpened_image is not None:
-                cv2.imwrite(relative_path(f"data2/frames/{file}"), sharpened_image)
+                cv2.imwrite(relative_path(f"data/cropped_images/frames/{file}"), sharpened_image)
             else:
                 print(f"Could not apply transformation to {file}")
 

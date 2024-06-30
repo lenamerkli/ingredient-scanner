@@ -6,7 +6,7 @@ from general import relative_path, os, json, Image
 MAX_SIZE = 5_000_000
 # ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
 ENGINE = ['local', 'llama_cpp/v2/vision', 'qwen-vl-next_b2583']
-with open(relative_path('data2/prompt.md'), 'r', encoding='utf-8') as _f:
+with open(relative_path('data/cropped_images/prompt.md'), 'r', encoding='utf-8') as _f:
     PROMPT = _f.read()
 
 load_dotenv()
@@ -33,7 +33,7 @@ def decrease_size(input_path, output_path):
 def main():
     if ENGINE[0] == 'anthropic':
         file = input('Enter file name without extension: ')
-        input_path = relative_path(f'data2/frames/{file}.png')
+        input_path = relative_path(f'data/cropped_images/frames/{file}.png')
         output_path = relative_path(f'tmp/frames_claude/{file}.webp')
         decrease_size(input_path, output_path)
         with open(output_path, 'rb') as f:
@@ -69,12 +69,12 @@ def main():
             }),
         )
         data = response.json()
-        with open(relative_path(f"data2/frames_claude/{file}.json"), 'w', encoding='utf-8') as f:
+        with open(relative_path(f"data/cropped_images/frames_claude/{file}.json"), 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
         print(data)
     elif ENGINE[0] == 'local':
         file = input('Enter file name without extension: ')
-        input_path = relative_path(f'data2/frames/{file}.png')
+        input_path = relative_path(f'data/cropped_images/frames/{file}.png')
         output_path = relative_path(f'tmp/frames_local/{file}.webp')
         decrease_size(input_path, output_path)
         response = requests.post(
@@ -90,14 +90,14 @@ def main():
             }),
         )
         data: str = response.json()['text']
-        with open(relative_path(f"data2/frames_local/{file}.txt"), 'w', encoding='utf-8') as f:
+        with open(relative_path(f"data/cropped_images/frames_local/{file}.txt"), 'w', encoding='utf-8') as f:
             f.write(data)
         print(data + '\n\n')
         data = '{' + data.split('{', 1)[-1]
         data = data.rsplit('}', 1)[0] + '}'
         data = data.replace('\\n', '\n')
         data = json.loads(data)
-        with open(relative_path(f"data2/frames_local/{file}.json"), 'w', encoding='utf-8') as f:
+        with open(relative_path(f"data/cropped_images/frames_local/{file}.json"), 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
         print(data)
 

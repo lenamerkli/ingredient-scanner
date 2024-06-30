@@ -43,11 +43,11 @@ class SyntheticDataset(torch.utils.data.Dataset):
         self.images = []
         self.data = []
         self.transform = transform
-        for file in sorted(os.listdir(relative_path(f"data/{self.image_dir}"))):
+        for file in sorted(os.listdir(relative_path(f"data/full_images/{self.image_dir}"))):
             if file.split('.')[-1].strip().lower() == 'png':
                 for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
-                        image = Image.open(relative_path(f"data/{self.image_dir}/{file}"))
+                        image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
                         image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
                         image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
                         width, height = (720, 1280)
