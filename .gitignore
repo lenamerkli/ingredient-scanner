@@ -1,8 +1,7 @@
 /servernode3
 /test
 
-/data/full_images/frames/*
-!/data/full_images/frames/.gitkeep
+/llama_cpp
 
 *.kate-swp
 
