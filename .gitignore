@@ -3,6 +3,8 @@
 
 /llama_cpp
 
+*.ini
+
 *.kate-swp
 
 /tmp/
@@ -212,6 +214,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv_linux
 env/
 venv/
 ENV/

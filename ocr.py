@@ -42,8 +42,8 @@ def main():
                     f.write('\n'.join([i[1] for i in result]))
     elif ENGINE[0] == 'anthropic':
         file = input('Enter file name without extension: ')
-        input_path = relative_path(f'data/cropped_images/frames/{file}.png')
-        output_path = relative_path(f'tmp/frames_claude/{file}.webp')
+        input_path = relative_path(f"data/cropped_images/frames/{file}.png")
+        output_path = relative_path(f"tmp/frames_claude/{file}.webp")
         decrease_size(input_path, output_path)
         with open(output_path, 'rb') as f:
             image = base64.b64encode(f.read()).decode('utf-8')
@@ -82,33 +82,28 @@ def main():
             json.dump(data, f, indent=4)
         print(data)
     elif ENGINE[0] == 'llama_cpp/v2/vision':
-        file = input('Enter file name without extension: ')
-        input_path = relative_path(f'data/cropped_images/frames/{file}.png')
-        output_path = relative_path(f'tmp/frames_local/{file}.webp')
-        decrease_size(input_path, output_path)
-        response = requests.post(
-            url='http://127.0.0.1:11434/llama_cpp/v2/vision',
-            headers={
-                'x-version': '2024-05-21',
-                'content-type': 'application/json',
-            },
-            data=json.dumps({
-                'task': PROMPT,
-                'model': ENGINE[1],
-                'image_path': output_path,
-            }),
-        )
-        data: str = response.json()['text']
-        with open(relative_path(f"data/cropped_images/frames_local/{file}.txt"), 'w', encoding='utf-8') as f:
-            f.write(data)
-        print(data + '\n\n')
-        data = '{' + data.split('{', 1)[-1]
-        data = data.rsplit('}', 1)[0] + '}'
-        data = data.replace('\\n', '\n')
-        data = json.loads(data)
-        with open(relative_path(f"data/cropped_images/frames_local/{file}.json"), 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
-        print(data)
+        for file in tqdm(os.listdir(relative_path('data/cropped_images/frames'))):
+            if file.endswith('.png'):
+                input_path = relative_path(f"data/cropped_images/frames/{file}")
+                output_path = relative_path(f"tmp/frames_local/{file.rsplit('.', 1)[0]}.webp")
+                decrease_size(input_path, output_path)
+                response = requests.post(
+                    url='http://127.0.0.1:11434/llama_cpp/v2/vision',
+                    headers={
+                        'x-version': '2024-05-21',
+                        'content-type': 'application/json',
+                    },
+                    data=json.dumps({
+                        'task': PROMPT,
+                        'model': ENGINE[1],
+                        'image_path': output_path,
+                    }),
+                )
+                data: str = response.json()['text']
+                with open(relative_path(f"data/cropped_images/frames_local/{file.rsplit('.', 1)[0]}.txt"),
+                          'w', encoding='utf-8') as f:
+                    f.write(data)
+                print(data)
 
 
 if __name__ == '__main__':
