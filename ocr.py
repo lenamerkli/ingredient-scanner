@@ -1,11 +1,13 @@
 import requests
 import base64
+import easyocr
 from dotenv import load_dotenv
-from general import relative_path, os, json, Image
+from general import relative_path, os, json, Image, tqdm
 
 MAX_SIZE = 5_000_000
+# ENGINE = ['easyocr']
 # ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
-ENGINE = ['local', 'llama_cpp/v2/vision', 'qwen-vl-next_b2583']
+ENGINE = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
 with open(relative_path('data/cropped_images/prompt.md'), 'r', encoding='utf-8') as _f:
     PROMPT = _f.read()
 
@@ -31,7 +33,14 @@ def decrease_size(input_path, output_path):
 
 
 def main():
-    if ENGINE[0] == 'anthropic':
+    if ENGINE[0] == 'easyocr':
+        reader = easyocr.Reader(['de', 'fr', 'en'], gpu=True)
+        for file in tqdm(os.listdir(relative_path('data2/frames'))):
+            if file.endswith('.png'):
+                result = reader.readtext(relative_path(f'data2/frames/{file}'))
+                with open(relative_path(f"data2/frames_ocr/{file.rsplit('.', 1)[0]}.txt"), 'w', encoding='utf-8') as f:
+                    f.write('\n'.join([i[1] for i in result]))
+    elif ENGINE[0] == 'anthropic':
         file = input('Enter file name without extension: ')
         input_path = relative_path(f'data/cropped_images/frames/{file}.png')
         output_path = relative_path(f'tmp/frames_claude/{file}.webp')
@@ -72,20 +81,20 @@ def main():
         with open(relative_path(f"data/cropped_images/frames_claude/{file}.json"), 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
         print(data)
-    elif ENGINE[0] == 'local':
+    elif ENGINE[0] == 'llama_cpp/v2/vision':
         file = input('Enter file name without extension: ')
         input_path = relative_path(f'data/cropped_images/frames/{file}.png')
         output_path = relative_path(f'tmp/frames_local/{file}.webp')
         decrease_size(input_path, output_path)
         response = requests.post(
-            url=f"http://127.0.0.1:11434/{ENGINE[1]}",
+            url='http://127.0.0.1:11434/llama_cpp/v2/vision',
             headers={
                 'x-version': '2024-05-21',
                 'content-type': 'application/json',
             },
             data=json.dumps({
                 'task': PROMPT,
-                'model': ENGINE[2],
+                'model': ENGINE[1],
                 'image_path': output_path,
             }),
         )
