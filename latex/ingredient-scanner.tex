@@ -25,32 +25,32 @@
     \chapter{Project Plan}
 
         \section{Architecture}
-                Our computer vision project, IngredientScanner, uses multiple layers of artificial intelligences stacked on top of each other and connected with code. This ensures the computational efficency as it is possible to aid the individual layers with code and standardize the connections between them.
+                Our computer vision project, Ingredient-scanner, uses multiple layers of artificial intelligence's stacked on top of each other and connected with code. This ensures the computational efficiency as it is possible to aid the individual layers with code and standardize the connections between them.
 
             \subsection{Image Filters}
                 \label{subsec:architecture:filters}
                 As the first step, each frame is parsed by image filters which sharpen the edges and reduce the resolution as well as the color spectrum.
 
             \subsection{First Vision Layer}
-                The first vision layer is a keypoint detection convolutional neural network and is going to detect the 4 corners of the packaging. This neural network outputs two additional points at the top and the bottom of the packaging to indentify cylindrical objects. We assume as part of our project that spherical products are inexistant.
+                The first vision layer is a key-point detection convolutional neural network and is going to detect the 4 corners of the packaging. This neural network outputs two additional points at the top and the bottom of the packaging to identify cylindrical objects. We assume as part of our project that spherical products are in-existent.
 
             \subsection{Image Distortion}
                 \label{subsec:architecture:distortion}
-                All datapoints from the first vision layer are used to distort and crop the image in such a way that the back of the product covers the entire rectangular canvas as if it was scanned by a scanner in printer.
+                All data-points from the first vision layer are used to distort and crop the image in such a way that the back of the product covers the entire rectangular canvas as if it was scanned by a scanner in printer.
 
             \subsection{Second Vision Layer}
-                Similar to the first one, this is also a keypoint detection convolutional neural network.
-                It is going to identify the part of the back of the packaging with the ingredient list. All other image data is discarded, altough it can be used in future projects.
+                Similar to the first one, this is also a key-point detection convolutional neural network.
+                It is going to identify the part of the back of the packaging with the ingredient list. All other image data is discarded, although it can be used in future projects.
 
             \subsection{Optical Character Recognition}
                 This part turns pixels from an image into text characters. We won't create our own OCR engine as it probably would return sub-optimal results.
 
             \subsection{Text Parsing with LLM}
-                It is known since the beginning of the existance of OCR that they sometimes return additional whitespace, leave out whitespaces and swap characters. To combat this, the result of the last layer is standardized by a large language model. In order to increase the accuracy, GBNF (Gerganov Bakus-Naur Form) \cite{gbnf} allong with a local llama.cpp \cite{llamacpp} instance will be in use. This step is also important to distinguish between ingredients and contaminants.
+                It is known since the beginning of the existence of OCR that they sometimes return additional white space, leave out white spaces and swap characters. To combat this, the result of the last layer is standardized by a large language model. In order to increase the accuracy, GBNF (Gerganov Bakus-Naur Form) \cite{gbnf} along with a local llama.cpp \cite{llamacpp} instance will be in use. This step is also important to distinguish between ingredients and contaminants.
 
             \subsection{Lookup Table}
                 \label{subsec:architecture:table}
-                Information about each ingredient and contaminant will be retrieved from a lookup table. Included in each entry will be atleast data on the following parameters: lactose, gluten, vegan, vegetarian, egg, peanut, tree nut, soy and fish. The exact number and contents will be determinded once we reached this step. The definition of those will be derived from swiss law \cite{fedlex-ingredient}.
+                Information about each ingredient and contaminant will be retrieved from a lookup table. Included in each entry will be at least data on the following parameters: lactose, gluten, vegan, vegetarian, egg, peanut, tree nut, soy and fish. The exact number and contents will be determined once we reached this step. The definition of those will be derived from Swiss law \cite{fedlex-ingredient}.
 
         \section{Training-Data Aggregation}
 
@@ -59,11 +59,11 @@
                 Short video clips of the back of the product from different angles are recorded to eliminate the hustle to take a lot of photos manually. These videos are cut to remove unusable data if not the entirety of the product has been captured. All frames are extracted from those videos with FFmpeg \cite{ffmpeg} \cite{ffmpeg-python}.
 
             \subsection{Manual Labeling}
-                The pictures resulting from the previous process are labeled manually by determening the corners and the curviture. The results are stored in JSON \cite{json}, which is both human- and computer-readable.
+                The pictures resulting from the previous process are labeled manually by determining the corners and the curvature. The results are stored in JSON \cite{json}, which is both human- and computer-readable.
 
             \subsection{Dataset Inflation}
                 \label{subsec:data:inflation}
-                In order to save working hours, all already label datapoints are automatically distorted, rotated and edited in other ways to create new synthetic data. The coordinates of the corners will be edited in the same way.
+                In order to save working hours, all already label data points are automatically distorted, rotated and edited in other ways to create new synthetic data. The coordinates of the corners will be edited in the same way.
 
             \subsection{Hybrid Labeling}
                 Once a first version of the AIs are trained, these can be used to generate the data of not yet labeled pictures. This data will be review and corrected if necessary. We have been inspired by the reinforcement learning from human feedback (RLHF) \cite{rlhf1} \cite{rlhf2}  of large language models.
@@ -74,7 +74,7 @@
                 Extracts frames from all videos. Used in \hyperref[subsec:data:recording]{Video Recording} Available on \url{https://github.com/lenamerkli/ingredient-scanner/blob/main/data/video_to_frames.py}.
 
             \subsection{Dataset Inflation}
-                Creates new datapoints from already existing ones. Used in \hyperref[subsec:data:inflation]{Dataset Inflation of Training-Data}.
+                Creates new data-points from already existing ones. Used in \hyperref[subsec:data:inflation]{Dataset Inflation of Training-Data}.
 
             \subsection{Image Sharpening}
                 Sharpens the edges and reduces the resolution as well as the color spectrum. Used in \hyperref[subsec:architecture:filters]{Image Filters}.
@@ -86,7 +86,7 @@
                 Categorizes the found ingredients according to the database. Used in \hyperref[subsec:architecture:table]{Lookup Table}.
 
         \section{AI Training}
-            The two AIs will be trained after each other with PyTorch \cite{pytorch} on a local server with a Nvidia RTX 4060 with 8GB RAM.
+            The two AIs will be trained after each other with PyTorch \cite{pytorch} on a local server with a nVidia RTX 4060 with 8GB RAM.
 
         \section{Work Distribution}
             Sonja will be responsible for the aggregation of the training data. Lena does everything else.
