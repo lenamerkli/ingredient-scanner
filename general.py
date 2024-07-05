@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from math import sqrt
 from tqdm import tqdm
+from torchviz import make_dot
 import json
 import os
 import pandas as pd
@@ -142,3 +143,11 @@ class NeuralNet(torch.nn.Module):
         x = x.view(x.size(0), -1)
 
         return x
+
+
+if __name__ == '__main__':
+    _model = NeuralNet()
+    _x = torch.rand(1, 3, 224, 224)
+    _dot = make_dot(_model(_x), params=dict(_model.named_parameters()))
+    _dot.format = 'png'
+    _dot.render('model_graph.png')
