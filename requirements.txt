@@ -121,6 +121,7 @@ tomlkit==0.12.5
 torch==2.3.0+cu121
 torchaudio==2.3.0+cu121
 torchvision==0.18.0+cu121
+torchviz==0.0.2
 tqdm==4.66.4
 transformers==4.42.3
 transformers-stream-generator==0.0.5
