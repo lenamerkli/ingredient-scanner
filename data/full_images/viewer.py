@@ -29,6 +29,18 @@ class ImageApp:
         self.current_directory = tk.StringVar()
         self.current_file = tk.StringVar()
 
+        # Add scale selector
+        self.scale_label = tk.Label(root, text="Scale:")
+        self.scale_label.grid(row=3, column=0, padx=10, pady=5)
+
+        self.scale_var = tk.DoubleVar(value=1.0)
+        self.scale_entry = ttk.Entry(root, textvariable=self.scale_var, width=10)
+        self.scale_entry.grid(row=3, column=1, padx=10, pady=5)
+        self.scale_entry.bind("<Return>", self.update_scale)
+
+        self.scale_button = ttk.Button(root, text="Apply Scale", command=self.update_scale)
+        self.scale_button.grid(row=3, column=2, padx=10, pady=5)
+
         # Dropdown to select directory
         self.dir_label = tk.Label(root, text="Select Directory:")
         self.dir_label.grid(row=0, column=0, padx=10, pady=5)
@@ -75,6 +87,16 @@ class ImageApp:
         # Bind mouse click event to the canvas to log coordinates
         self.canvas.bind("<Button-1>", self.log_click_coordinates)
 
+    def update_scale(self, event=None):
+        try:
+            new_scale = float(self.scale_var.get())
+            if new_scale > 0:
+                self.update_canvas(self.image, scale=new_scale)
+            else:
+                print("Scale must be greater than 0")
+        except ValueError:
+            print("Invalid scale value")
+
     def update_file_list(self, event=None):
         directory = self.current_directory.get().replace('rhlf', 'frames')
         self.files = sorted(f for f in os.listdir(directory) if f.endswith('.png'))
@@ -92,19 +114,28 @@ class ImageApp:
         self.image = Image.open(path)
         self.update_canvas(self.image)
 
-    def update_canvas(self, image):
-        self.photo = ImageTk.PhotoImage(image)
+    def update_canvas(self, image, scale=None):
+        if scale is None:
+            scale = float(self.scale_var.get())
 
-        # Adjust canvas size to image size
-        self.canvas.config(width=image.width, height=image.height)
+        # Resize the image based on the scale
+        new_width = int(image.width * scale)
+        new_height = int(image.height * scale)
+        resized_image = image.resize((new_width, new_height), Image.LANCZOS)
+
+        self.photo = ImageTk.PhotoImage(resized_image)
+
+        # Adjust canvas size to resized image size
+        self.canvas.config(width=new_width, height=new_height)
+        self.canvas.delete("all")  # Clear previous content
         self.canvas.create_image(0, 0, image=self.photo, anchor='nw')
 
         self.clicks = []
 
         self.adjust_canvas_size(None)
-        self.load_points()
+        self.load_points(scale)
 
-    def load_points(self):
+    def load_points(self, scale=1.0):
         directory = self.current_directory.get()
         filename = self.current_file.get()
         base, ext = os.path.splitext(filename)
@@ -141,7 +172,7 @@ class ImageApp:
 
             # Draw points on the image
             for point, color in zip(points, COLORS):
-                x, y = point['x'], point['y']
+                x, y = point['x'] * scale, point['y'] * scale
                 self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill=color)
 
     def adjust_canvas_size(self, event):
@@ -151,7 +182,7 @@ class ImageApp:
             # Set scroll region to accommodate the full image
             self.canvas.configure(scrollregion=(0, 0, image_width, image_height))
 
-            # Adjust the size of the canvas to the lesser of the image size or the window size
+            # Adjust the size of the canvas to the least of the image size or the window size
             window_width = self.root.winfo_width()
             window_height = self.root.winfo_height()
 
@@ -169,11 +200,14 @@ class ImageApp:
         canvas_x = self.canvas.canvasx(event.x)
         canvas_y = self.canvas.canvasy(event.y)
 
+        # Get the current scale
+        scale = float(self.scale_var.get())
+
         # Check if the click is within the bounds of the image
         if (0 <= canvas_x < self.photo.width()) and (0 <= canvas_y < self.photo.height()):
             # Get the image x and y positions
-            image_x = int(self.image.width * (canvas_x / self.canvas.winfo_width()))
-            image_y = int(self.image.height * (canvas_y / self.canvas.winfo_height()))
+            image_x = int(canvas_x / scale)
+            image_y = int(canvas_y / scale)
             self.clicks.append({'x': image_x, 'y': image_y})
             filename = self.current_file.get()
             base, _ = os.path.splitext(filename)
