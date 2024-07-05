@@ -15,7 +15,7 @@ with open(relative_path('prompt.md'), 'r', encoding='utf-8') as _f:
               f"<|im_start|>user\n{_f.read()}\n"
               f"<|im_end|>\n<|im_start|>assistant\n")
 EOS = '\n<|im_end|>'
-ITERATIONS = 1000
+ITERATIONS = 10000
 SEED = 2024 - 7 - 28
 
 
