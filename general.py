@@ -49,8 +49,6 @@ class SyntheticDataset(torch.utils.data.Dataset):
                 for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
                         image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
-                        image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
-                        image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
                         width, height = (720, 1280)
                         data = pd.read_json(relative_path(f"data/{self.data_dir}/{data_file}"))
                         if data['curvature']['top']['x'] is None:
@@ -63,6 +61,14 @@ class SyntheticDataset(torch.utils.data.Dataset):
                         if data['curvature']['bottom']['y'] is None:
                             data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right'][
                                 'y']) / 2
+                        if image.size != ORIGINAL_SIZE:
+                            for key1 in data:
+                                for key2 in data[key1]:
+                                    data[key1][key2]['x'] = int(data[key1][key2]['x'] * (width / ORIGINAL_SIZE[0]))
+                                    data[key1][key2]['y'] = int(data[key1][key2]['y'] * (height / ORIGINAL_SIZE[1]))
+                            image = image.resize(ORIGINAL_SIZE, Image.Resampling.LANCZOS)
+                        image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                        image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
                         tensor_data = [
                             data['top']['left']['x'] / width,
                             data['top']['left']['y'] / height,

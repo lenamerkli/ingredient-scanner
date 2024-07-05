@@ -89,6 +89,12 @@ def main():
                 data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right']['x']) / 2
             if data['curvature']['bottom']['y'] is None:
                 data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right']['y']) / 2
+            if image.shape[0] != ORIGINAL_SIZE[1] or image.shape[1] != ORIGINAL_SIZE[0]:
+                for key1 in data:
+                    for key2 in data[key1]:
+                        data[key1][key2]['x'] = int(data[key1][key2]['x'] * (ORIGINAL_SIZE[0] / image.shape[1]))
+                        data[key1][key2]['y'] = int(data[key1][key2]['y'] * (ORIGINAL_SIZE[1] / image.shape[0]))
+                image = cv2.resize(image, (ORIGINAL_SIZE[0], ORIGINAL_SIZE[1]))
             points = np.array([
                 (data['top']['left']['x'] * (1 - MARGIN),
                  data['top']['left']['y'] * (1 - MARGIN)),

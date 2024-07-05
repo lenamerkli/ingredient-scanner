@@ -244,7 +244,7 @@ def main():
     num_settings = 4
     random.seed(SEED)
     files = sorted(os.listdir(relative_path('frames_json')))
-    progress_bar = tqdm(total=len(files)*(num_settings - 1)*REPETITIONS)
+    progress_bar = tqdm(total=(len(files) - 1)*((2 ** num_settings) - 1)*REPETITIONS)
     for file in files:
         if file.split('.')[-1].strip().lower() == 'json':
             with open(relative_path(f"frames_json/{file}"), 'r') as f:
@@ -264,6 +264,15 @@ def main():
                         original_data['curvature']['bottom']['y'] = (original_data['bottom']['left']['y']
                                                                      + original_data['bottom']['right']['y']) / 2
                     with Image.open(relative_path(f"frames/{frame}")) as original_image:
+                        if original_image.size != IMAGE_SIZE:
+                            original_size = original_image.size
+                            original_image = original_image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                            for key1 in original_data:
+                                for key2 in original_data[key1]:
+                                    original_data[key1][key2]['x'] = int(original_data[key1][key2]['x'] * (
+                                            original_size[0] / IMAGE_SIZE[0]))
+                                    original_data[key1][key2]['y'] = int(original_data[key1][key2]['y'] * (
+                                            original_size[1] / IMAGE_SIZE[1]))
                         index = 0
                         for repetition in range(REPETITIONS):
                             for settings_int in range(2 ** num_settings):
@@ -287,6 +296,7 @@ def main():
                                     del data
                                     del image
                                     index += 1
+                                    progress_bar.update(1)
                     break
 
 
