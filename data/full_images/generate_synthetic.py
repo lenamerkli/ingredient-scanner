@@ -244,7 +244,7 @@ def main():
     num_settings = 4
     random.seed(SEED)
     files = sorted(os.listdir(relative_path('frames_json')))
-    progress_bar = tqdm(total=(len(files) - 1)*((2 ** num_settings) - 1)*REPETITIONS)
+    progress_bar = tqdm(total=files * ((2 ** num_settings) - 1) * REPETITIONS)
     for file in files:
         if file.split('.')[-1].strip().lower() == 'json':
             with open(relative_path(f"frames_json/{file}"), 'r') as f:
@@ -298,6 +298,8 @@ def main():
                                     index += 1
                                     progress_bar.update(1)
                     break
+        else:
+            progress_bar.update(((2 ** num_settings) - 1) * REPETITIONS)
 
 
 if __name__ == '__main__':
