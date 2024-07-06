@@ -14,9 +14,9 @@ from general import (
 )
 
 NUM_EPOCHS = 64
-BATCH_SIZE = 4
+BATCH_SIZE = 16
 LEARNING_RATE = 0.0005
-CRITERION = 'L1Loss'
+CRITERION = 'MSELoss'
 
 
 def calculate_eval(model: NeuralNet, test_loader: torch.utils.data.DataLoader) -> float:

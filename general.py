@@ -18,10 +18,15 @@ CRITERIONS = {
     'BCELoss': torch.nn.BCELoss,
     'CTCLoss': torch.nn.CTCLoss,
     'CrossEntropyLoss': torch.nn.CrossEntropyLoss,
+    'HingeEmbeddingLoss': torch.nn.HingeEmbeddingLoss,
+    'KLDivLoss': torch.nn.KLDivLoss,
     'L1Loss': torch.nn.L1Loss,
+    'MarginRankingLoss': torch.nn.MarginRankingLoss,
     'MSELoss': torch.nn.MSELoss,
     'NLLLoss': torch.nn.NLLLoss,
     'SmoothL1Loss': torch.nn.SmoothL1Loss,
+    'SoftMarginLoss': torch.nn.SoftMarginLoss,
+    'TripletMarginLoss': torch.nn.TripletMarginLoss,
 }
 
 
@@ -46,11 +51,12 @@ class SyntheticDataset(torch.utils.data.Dataset):
         self.transform = transform
         for file in sorted(os.listdir(relative_path(f"data/full_images/{self.image_dir}"))):
             if file.split('.')[-1].strip().lower() == 'png':
-                for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
+                for data_file in sorted(os.listdir(relative_path(f"data/full_images/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
                         image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
                         width, height = (720, 1280)
-                        data = pd.read_json(relative_path(f"data/{self.data_dir}/{data_file}"))
+                        with open(relative_path(f"data/full_images/{self.data_dir}/{data_file}"), 'r') as f:
+                            data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
                         if data['curvature']['top']['x'] is None:
                             data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
                         if data['curvature']['top']['y'] is None:
