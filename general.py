@@ -3,6 +3,8 @@ from datetime import datetime
 from pathlib import Path
 from math import sqrt
 from tqdm import tqdm
+from zlib import adler32
+from copy import deepcopy
 from torchviz import make_dot
 import json
 import os
@@ -38,6 +40,17 @@ def relative_path(string: str) -> str:
     return os.path.join(os.path.dirname(__file__), string)
 
 
+def calculate_adler32_file_chunked(filepath, chunk_size=1024*64):
+    checksum = 1  # Adler-32 initial value
+    with open(filepath, 'rb') as f:
+        while True:
+            data = f.read(chunk_size)  # Read the file in chunks
+            if not data:
+                break  # If there is no more data, exit the loop
+            checksum = adler32(data, checksum)  # Calculate checksum of chunk
+    return checksum
+
+
 class SyntheticDataset(torch.utils.data.Dataset):
     def __init__(self, train=True, transform=None):
         if train:
@@ -49,32 +62,55 @@ class SyntheticDataset(torch.utils.data.Dataset):
         self.images = []
         self.data = []
         self.transform = transform
-        for file in sorted(os.listdir(relative_path(f"data/full_images/{self.image_dir}"))):
+        if not os.path.exists(relative_path('tmp/hashes.json')):
+            with open(relative_path('tmp/hashes.json'), 'w') as f:
+                json.dump({}, f, indent=4)
+        with open(relative_path('tmp/hashes.json'), 'r') as f:
+            hashes: dict[str, int] = json.load(f)
+        new_hashes = deepcopy(hashes)
+        for file in tqdm(sorted(os.listdir(relative_path(f"data/full_images/{self.image_dir}")))):
             if file.split('.')[-1].strip().lower() == 'png':
                 for data_file in sorted(os.listdir(relative_path(f"data/full_images/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
-                        image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
-                        width, height = (720, 1280)
-                        with open(relative_path(f"data/full_images/{self.data_dir}/{data_file}"), 'r') as f:
-                            data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
-                        if data['curvature']['top']['x'] is None:
-                            data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
-                        if data['curvature']['top']['y'] is None:
-                            data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
-                        if data['curvature']['bottom']['x'] is None:
-                            data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right'][
-                                'x']) / 2
-                        if data['curvature']['bottom']['y'] is None:
-                            data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right'][
-                                'y']) / 2
-                        if image.size != ORIGINAL_SIZE:
-                            for key1 in data:
-                                for key2 in data[key1]:
-                                    data[key1][key2]['x'] = int(data[key1][key2]['x'] * (width / ORIGINAL_SIZE[0]))
-                                    data[key1][key2]['y'] = int(data[key1][key2]['y'] * (height / ORIGINAL_SIZE[1]))
-                            image = image.resize(ORIGINAL_SIZE, Image.Resampling.LANCZOS)
-                        image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
-                        image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
+                        hashed = (calculate_adler32_file_chunked(relative_path(
+                            f"data/full_images/{self.image_dir}/{file}"))
+                                  + calculate_adler32_file_chunked(relative_path(
+                                    f"data/full_images/{self.data_dir}/{data_file}")))
+                        use_cache = False
+                        if file.split('.')[0] in hashes:
+                            if hashed == hashes[file.split('.')[0]]:
+                                use_cache = True
+                        new_hashes[file.split('.')[0]] = hashed
+                        if use_cache:
+                            image = Image.open(relative_path(f"tmp/{self.image_dir}/{file}"))
+                            width, height = (720, 1280)
+                            with open(relative_path(f"tmp/{self.data_dir}/{data_file}"), 'r') as f:
+                                data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
+                        else:
+                            image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
+                            width, height = (720, 1280)
+                            with open(relative_path(f"data/full_images/{self.data_dir}/{data_file}"), 'r') as f:
+                                data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
+                            if data['curvature']['top']['x'] is None:
+                                data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
+                            if data['curvature']['top']['y'] is None:
+                                data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
+                            if data['curvature']['bottom']['x'] is None:
+                                data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right'][
+                                    'x']) / 2
+                            if data['curvature']['bottom']['y'] is None:
+                                data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right'][
+                                    'y']) / 2
+                            if image.size != ORIGINAL_SIZE:
+                                for key1 in data:
+                                    for key2 in data[key1]:
+                                        data[key1][key2]['x'] = int(data[key1][key2]['x'] * (width / ORIGINAL_SIZE[0]))
+                                        data[key1][key2]['y'] = int(data[key1][key2]['y'] * (height / ORIGINAL_SIZE[1]))
+                                image = image.resize(ORIGINAL_SIZE, Image.Resampling.LANCZOS)
+                            image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                            image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
+                            with open(relative_path(f"tmp/{self.data_dir}/{data_file}"), 'w') as f:
+                                json.dump(data, f, indent=4)
                         tensor_data = [
                             data['top']['left']['x'] / width,
                             data['top']['left']['y'] / height,
@@ -96,6 +132,8 @@ class SyntheticDataset(torch.utils.data.Dataset):
                             image = self.transform(image).to(DEVICE)
                         self.data.append(tensor_data)
                         self.images.append(image)
+        with open(relative_path(f"tmp/hashes.json"), 'w') as f:
+            json.dump(new_hashes, f, indent=4)
 
     def __len__(self):
         return len(self.images)

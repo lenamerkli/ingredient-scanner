@@ -13,9 +13,9 @@ from general import (
     torchvision,
 )
 
-NUM_EPOCHS = 64
+NUM_EPOCHS = 24
 BATCH_SIZE = 16
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.00004
 CRITERION = 'MSELoss'
 
 
@@ -62,10 +62,13 @@ def main():
     n_total_steps = len(train_loader)
     i = 0
     loss_history = []
+    keyboard_interrupt = False
     train = True
     epoch = 0
     while train:
         try:
+            if keyboard_interrupt:
+                raise KeyboardInterrupt()
             model.train()
             for i, (images, data) in enumerate(train_loader):
                 images = images.to(DEVICE)
@@ -84,12 +87,15 @@ def main():
             else:
                 train = False
                 NUM_EPOCHS = epoch
-        if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
-            train = False
-        if loss_history:
-            average_distance = calculate_eval(model, test_loader)
-            print(f"Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}, "
-                  f"Average distance: {average_distance:.4f}")
+        try:
+            if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
+                train = False
+            if loss_history:
+                average_distance = calculate_eval(model, test_loader)
+                print(f"Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}, "
+                      f"Average distance: {average_distance:.4f}")
+        except KeyboardInterrupt:
+            keyboard_interrupt = True
     print('Finished Training')
     average_distance = calculate_eval(model, test_loader)
     print(f"Average distance: {average_distance:.4f}")
