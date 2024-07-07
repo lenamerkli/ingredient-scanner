@@ -13,9 +13,9 @@ from general import (
     torchvision,
 )
 
-NUM_EPOCHS = 48
+NUM_EPOCHS = 32
 BATCH_SIZE = 8
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.00001
 CRITERION = 'IngredientScannerLoss'
 LOSS_ALPHA = 2.0
 LOSS_BETA = 1.2
