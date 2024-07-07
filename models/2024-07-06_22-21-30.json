@@ -1,0 +1,13 @@
+{
+  "average_distance": 0.04150591218883337,
+  "batch_size": 4,
+  "criterion": "MSELoss",
+  "image_size_x": 224,
+  "image_size_y": 224,
+  "last_loss": 0.004058244172483683,
+  "learning_rate": 2e-05,
+  "loss_ao10": 0.0023480293923057614,
+  "num_epochs": 16,
+  "start_time": "2024-07-06_22-17-13",
+  "type": "base"
+}
