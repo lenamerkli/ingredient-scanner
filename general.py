@@ -20,11 +20,11 @@ class IngredientScannerLoss(torch.nn.Module):
         self._beta = beta
         
     def _apply_alpha_beta(self, distance):
-        return distance ** self._beta * self._alpha
+        return ((distance + 1) ** self._beta - 1) * self._alpha
 
     def forward(self, output: torch.Tensor, target: torch.Tensor):
         delta = output - target
-        batched = delta.shape[0] > 1
+        batched = len(delta.shape) > 1
         losses = torch.zeros(delta.shape[0], device=output.device)
         if not batched:
             delta = delta.unsqueeze(0)
@@ -36,28 +36,28 @@ class IngredientScannerLoss(torch.nn.Module):
                     if delta[i][0] > 0.0:
                         distance = self._apply_alpha_beta(distance)
                     if delta[i][1] > 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                 elif j == 1:  # top right
                     if delta[i][2] > 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                     if delta[i][3] < 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                 elif j == 2:  # bottom left
                     if delta[i][4] < 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                     if delta[i][5] < 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                 elif j == 3:  # bottom right
                     if delta[i][6] < 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                     if delta[i][7] > 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                 elif j == 4:  # curvature top
                     if delta[i][9] > 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                 elif j == 5:  # curvature bottom
                     if delta[i][11] < 0.0:
-                        distance = distance ** self._beta * self._alpha
+                        distance = self._apply_alpha_beta(distance)
                 loss += distance
             losses[i] = loss
         if not batched:
