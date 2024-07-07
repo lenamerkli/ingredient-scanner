@@ -13,6 +13,58 @@ import torch
 import torchvision
 
 
+class IngredientScannerLoss(torch.nn.Module):
+    def __init__(self, alpha=2.0, beta=1.2, **_):
+        super(IngredientScannerLoss, self).__init__()
+        self._alpha = alpha
+        self._beta = beta
+        
+    def _apply_alpha_beta(self, distance):
+        return distance ** self._beta * self._alpha
+
+    def forward(self, output: torch.Tensor, target: torch.Tensor):
+        delta = output - target
+        batched = delta.shape[0] > 1
+        losses = torch.zeros(delta.shape[0], device=output.device)
+        if not batched:
+            delta = delta.unsqueeze(0)
+        for i in range(delta.shape[0]):
+            loss = 0.0
+            for j in range(6):
+                distance = torch.sqrt(delta[i][j * 2] ** 2 + delta[i][j * 2 + 1] ** 2)
+                if j == 0:  # top left
+                    if delta[i][0] > 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                    if delta[i][1] > 0.0:
+                        distance = distance ** self._beta * self._alpha
+                elif j == 1:  # top right
+                    if delta[i][2] > 0.0:
+                        distance = distance ** self._beta * self._alpha
+                    if delta[i][3] < 0.0:
+                        distance = distance ** self._beta * self._alpha
+                elif j == 2:  # bottom left
+                    if delta[i][4] < 0.0:
+                        distance = distance ** self._beta * self._alpha
+                    if delta[i][5] < 0.0:
+                        distance = distance ** self._beta * self._alpha
+                elif j == 3:  # bottom right
+                    if delta[i][6] < 0.0:
+                        distance = distance ** self._beta * self._alpha
+                    if delta[i][7] > 0.0:
+                        distance = distance ** self._beta * self._alpha
+                elif j == 4:  # curvature top
+                    if delta[i][9] > 0.0:
+                        distance = distance ** self._beta * self._alpha
+                elif j == 5:  # curvature bottom
+                    if delta[i][11] < 0.0:
+                        distance = distance ** self._beta * self._alpha
+                loss += distance
+            losses[i] = loss
+        if not batched:
+            return losses[0]
+        return losses
+
+
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 IMAGE_SIZE = (224, 224)
 ORIGINAL_SIZE = (720, 1280)
@@ -21,6 +73,7 @@ CRITERIONS = {
     'CTCLoss': torch.nn.CTCLoss,
     'CrossEntropyLoss': torch.nn.CrossEntropyLoss,
     'HingeEmbeddingLoss': torch.nn.HingeEmbeddingLoss,
+    'IngredientScannerLoss': IngredientScannerLoss,
     'KLDivLoss': torch.nn.KLDivLoss,
     'L1Loss': torch.nn.L1Loss,
     'MarginRankingLoss': torch.nn.MarginRankingLoss,
