@@ -244,7 +244,7 @@ def main():
     num_settings = 4
     random.seed(SEED)
     files = sorted(os.listdir(relative_path('frames_json')))
-    progress_bar = tqdm(total=files * ((2 ** num_settings) - 1) * REPETITIONS)
+    progress_bar = tqdm(total=len(files) * ((2 ** num_settings) - 1) * REPETITIONS)
     for file in files:
         if file.split('.')[-1].strip().lower() == 'json':
             with open(relative_path(f"frames_json/{file}"), 'r') as f:
@@ -269,9 +269,9 @@ def main():
                             original_image = original_image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
                             for key1 in original_data:
                                 for key2 in original_data[key1]:
-                                    original_data[key1][key2]['x'] = int(original_data[key1][key2]['x'] * (
+                                    original_data[key1][key2]['x'] = int(original_data[key1][key2]['x'] / (
                                             original_size[0] / IMAGE_SIZE[0]))
-                                    original_data[key1][key2]['y'] = int(original_data[key1][key2]['y'] * (
+                                    original_data[key1][key2]['y'] = int(original_data[key1][key2]['y'] / (
                                             original_size[1] / IMAGE_SIZE[1]))
                         index = 0
                         for repetition in range(REPETITIONS):
