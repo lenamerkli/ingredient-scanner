@@ -76,10 +76,11 @@ def apply_custom_transform(image, grid_x, grid_y, aspect_ratio):
 
 
 def main():
-    for file in tqdm(os.listdir(relative_path('data/frames'))):
-        if file.endswith('.png') and os.path.exists(relative_path(f'data/frames_json/{file.rsplit(".", 1)[0]}.json')):
-            image = cv2.imread(relative_path(f"data/frames/{file}"))
-            with open(relative_path(f"data/frames_json/{file.rsplit('.', 1)[0]}.json"), 'r') as json_file:
+    for file in tqdm(os.listdir(relative_path('data/full_images/frames'))):
+        if (file.endswith('.png') and
+                os.path.exists(relative_path(f'data/full_images/frames_json/{file.rsplit(".", 1)[0]}.json'))):
+            image = cv2.imread(relative_path(f"data/full_images/frames/{file}"))
+            with open(relative_path(f"data/full_images/frames_json/{file.rsplit('.', 1)[0]}.json"), 'r') as json_file:
                 data = json.load(json_file)
             if data['curvature']['top']['x'] is None:
                 data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2

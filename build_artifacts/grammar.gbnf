@@ -1,0 +1,3 @@
+root ::= "```json\n{\n  \"Zutaten\": [" + strings + "],\n  \"Verunreinigungen\": [" + strings + "]\n}\n```"
+strings ::= (string ", ")* string?
+string ::= "\"" [^n"\\]* "\""
