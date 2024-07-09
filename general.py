@@ -3,12 +3,66 @@ from datetime import datetime
 from pathlib import Path
 from math import sqrt
 from tqdm import tqdm
+from zlib import adler32
+from copy import deepcopy
 from torchviz import make_dot
 import json
 import os
 import pandas as pd
 import torch
 import torchvision
+
+
+class IngredientScannerLoss(torch.nn.Module):
+    def __init__(self, alpha=2.0, beta=1.2, **_):
+        super(IngredientScannerLoss, self).__init__()
+        self._alpha = alpha
+        self._beta = beta
+        
+    def _apply_alpha_beta(self, distance):
+        return ((distance + 1) ** self._beta - 1) * self._alpha
+
+    def forward(self, output: torch.Tensor, target: torch.Tensor):
+        delta = output - target
+        batched = len(delta.shape) > 1
+        losses = torch.zeros(delta.shape[0], device=output.device)
+        if not batched:
+            delta = delta.unsqueeze(0)
+        for i in range(delta.shape[0]):
+            loss = 0.0
+            for j in range(6):
+                distance = torch.sqrt(delta[i][j * 2] ** 2 + delta[i][j * 2 + 1] ** 2)
+                if j == 0:  # top left
+                    if delta[i][0] > 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                    if delta[i][1] > 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                elif j == 1:  # top right
+                    if delta[i][2] > 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                    if delta[i][3] < 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                elif j == 2:  # bottom left
+                    if delta[i][4] < 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                    if delta[i][5] < 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                elif j == 3:  # bottom right
+                    if delta[i][6] < 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                    if delta[i][7] > 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                elif j == 4:  # curvature top
+                    if delta[i][9] > 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                elif j == 5:  # curvature bottom
+                    if delta[i][11] < 0.0:
+                        distance = self._apply_alpha_beta(distance)
+                loss += distance
+            losses[i] = loss
+        if not batched:
+            return losses[0]
+        return losses
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -18,10 +72,16 @@ CRITERIONS = {
     'BCELoss': torch.nn.BCELoss,
     'CTCLoss': torch.nn.CTCLoss,
     'CrossEntropyLoss': torch.nn.CrossEntropyLoss,
+    'HingeEmbeddingLoss': torch.nn.HingeEmbeddingLoss,
+    'IngredientScannerLoss': IngredientScannerLoss,
+    'KLDivLoss': torch.nn.KLDivLoss,
     'L1Loss': torch.nn.L1Loss,
+    'MarginRankingLoss': torch.nn.MarginRankingLoss,
     'MSELoss': torch.nn.MSELoss,
     'NLLLoss': torch.nn.NLLLoss,
     'SmoothL1Loss': torch.nn.SmoothL1Loss,
+    'SoftMarginLoss': torch.nn.SoftMarginLoss,
+    'TripletMarginLoss': torch.nn.TripletMarginLoss,
 }
 
 
@@ -31,6 +91,17 @@ def current_time() -> str:
 
 def relative_path(string: str) -> str:
     return os.path.join(os.path.dirname(__file__), string)
+
+
+def calculate_adler32_file_chunked(filepath, chunk_size=1024*64):
+    checksum = 1  # Adler-32 initial value
+    with open(filepath, 'rb') as f:
+        while True:
+            data = f.read(chunk_size)  # Read the file in chunks
+            if not data:
+                break  # If there is no more data, exit the loop
+            checksum = adler32(data, checksum)  # Calculate checksum of chunk
+    return checksum
 
 
 class SyntheticDataset(torch.utils.data.Dataset):
@@ -44,25 +115,55 @@ class SyntheticDataset(torch.utils.data.Dataset):
         self.images = []
         self.data = []
         self.transform = transform
-        for file in sorted(os.listdir(relative_path(f"data/full_images/{self.image_dir}"))):
+        if not os.path.exists(relative_path('tmp/hashes.json')):
+            with open(relative_path('tmp/hashes.json'), 'w') as f:
+                json.dump({}, f, indent=4)
+        with open(relative_path('tmp/hashes.json'), 'r') as f:
+            hashes: dict[str, int] = json.load(f)
+        new_hashes = deepcopy(hashes)
+        for file in tqdm(sorted(os.listdir(relative_path(f"data/full_images/{self.image_dir}")))):
             if file.split('.')[-1].strip().lower() == 'png':
-                for data_file in sorted(os.listdir(relative_path(f"data/{self.data_dir}"))):
+                for data_file in sorted(os.listdir(relative_path(f"data/full_images/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
-                        image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
-                        image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
-                        image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
-                        width, height = (720, 1280)
-                        data = pd.read_json(relative_path(f"data/{self.data_dir}/{data_file}"))
-                        if data['curvature']['top']['x'] is None:
-                            data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
-                        if data['curvature']['top']['y'] is None:
-                            data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
-                        if data['curvature']['bottom']['x'] is None:
-                            data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right'][
-                                'x']) / 2
-                        if data['curvature']['bottom']['y'] is None:
-                            data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right'][
-                                'y']) / 2
+                        hashed = (calculate_adler32_file_chunked(relative_path(
+                            f"data/full_images/{self.image_dir}/{file}"))
+                                  + calculate_adler32_file_chunked(relative_path(
+                                    f"data/full_images/{self.data_dir}/{data_file}")))
+                        use_cache = False
+                        if file.split('.')[0] in hashes:
+                            if hashed == hashes[file.split('.')[0]]:
+                                use_cache = True
+                        new_hashes[file.split('.')[0]] = hashed
+                        if use_cache:
+                            image = Image.open(relative_path(f"tmp/{self.image_dir}/{file}"))
+                            width, height = (720, 1280)
+                            with open(relative_path(f"tmp/{self.data_dir}/{data_file}"), 'r') as f:
+                                data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
+                        else:
+                            image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
+                            width, height = (720, 1280)
+                            with open(relative_path(f"data/full_images/{self.data_dir}/{data_file}"), 'r') as f:
+                                data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
+                            if data['curvature']['top']['x'] is None:
+                                data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
+                            if data['curvature']['top']['y'] is None:
+                                data['curvature']['top']['y'] = (data['top']['left']['y'] + data['top']['right']['y']) / 2
+                            if data['curvature']['bottom']['x'] is None:
+                                data['curvature']['bottom']['x'] = (data['bottom']['left']['x'] + data['bottom']['right'][
+                                    'x']) / 2
+                            if data['curvature']['bottom']['y'] is None:
+                                data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right'][
+                                    'y']) / 2
+                            if image.size != ORIGINAL_SIZE:
+                                for key1 in data:
+                                    for key2 in data[key1]:
+                                        data[key1][key2]['x'] = int(data[key1][key2]['x'] * (width / ORIGINAL_SIZE[0]))
+                                        data[key1][key2]['y'] = int(data[key1][key2]['y'] * (height / ORIGINAL_SIZE[1]))
+                                image = image.resize(ORIGINAL_SIZE, Image.Resampling.LANCZOS)
+                            image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                            image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
+                            with open(relative_path(f"tmp/{self.data_dir}/{data_file}"), 'w') as f:
+                                json.dump(data, f, indent=4)
                         tensor_data = [
                             data['top']['left']['x'] / width,
                             data['top']['left']['y'] / height,
@@ -84,6 +185,8 @@ class SyntheticDataset(torch.utils.data.Dataset):
                             image = self.transform(image).to(DEVICE)
                         self.data.append(tensor_data)
                         self.images.append(image)
+        with open(relative_path(f"tmp/hashes.json"), 'w') as f:
+            json.dump(new_hashes, f, indent=4)
 
     def __len__(self):
         return len(self.images)

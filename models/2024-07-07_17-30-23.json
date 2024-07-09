@@ -1,0 +1,15 @@
+{
+  "average_distance": 0.02048860617482049,
+  "batch_size": 8,
+  "criterion": "IngredientScannerLoss",
+  "image_size_x": 224,
+  "image_size_y": 224,
+  "last_loss": 0.2613711655139923,
+  "learning_rate": 3e-05,
+  "loss_alpha": 2.0,
+  "loss_ao10": 0.3539813220500946,
+  "loss_beta": 1.2,
+  "num_epochs": 32,
+  "start_time": "2024-07-07_17-15-10",
+  "type": "base"
+}

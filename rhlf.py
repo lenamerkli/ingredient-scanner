@@ -12,9 +12,6 @@ from general import (
 )
 
 
-ORIGINAL_SIZE = (720, 1280)
-
-
 def main() -> None:
     model_name = sorted([i for i in os.listdir(relative_path('models')) if i.endswith('.pt')])[-1]
     model_weights = torch.load(relative_path(f'models/{model_name}'))
@@ -29,38 +26,39 @@ def main() -> None:
         for file in tqdm(os.listdir(relative_path('data/full_images/frames'))):
             if file.endswith('.png'):
                 image = Image.open(relative_path(f"data/full_images/frames/{file}"))
+                image_size = image.size
                 image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
                 image = transform(image).to(DEVICE)
                 output = model(image).tolist()[0]
                 data = {
                     'top': {
                         'left': {
-                            'x': output[0] * ORIGINAL_SIZE[0],
-                            'y': output[1] * ORIGINAL_SIZE[1],
+                            'x': output[0] * image_size[0],
+                            'y': output[1] * image_size[1],
                         },
                         'right': {
-                            'x': output[2] * ORIGINAL_SIZE[0],
-                            'y': output[3] * ORIGINAL_SIZE[1],
+                            'x': output[2] * image_size[0],
+                            'y': output[3] * image_size[1],
                         },
                     },
                     'bottom': {
                         'left': {
-                            'x': output[4] * ORIGINAL_SIZE[0],
-                            'y': output[5] * ORIGINAL_SIZE[1],
+                            'x': output[4] * image_size[0],
+                            'y': output[5] * image_size[1],
                         },
                         'right': {
-                            'x': output[6] * ORIGINAL_SIZE[0],
-                            'y': output[7] * ORIGINAL_SIZE[1],
+                            'x': output[6] * image_size[0],
+                            'y': output[7] * image_size[1],
                         },
                     },
                     'curvature': {
                         'top': {
-                            'x': output[8] * ORIGINAL_SIZE[0],
-                            'y': output[9] * ORIGINAL_SIZE[1],
+                            'x': output[8] * image_size[0],
+                            'y': output[9] * image_size[1],
                         },
                         'bottom': {
-                            'x': output[10] * ORIGINAL_SIZE[0],
-                            'y': output[11] * ORIGINAL_SIZE[1],
+                            'x': output[10] * image_size[0],
+                            'y': output[11] * image_size[1],
                         },
                     },
                 }

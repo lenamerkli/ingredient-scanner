@@ -60,7 +60,7 @@ def main():
             per_device_train_batch_size=2,
             gradient_accumulation_steps=4,
             warmup_steps=16,
-            max_steps=512,
+            max_steps=256,
             fp16=not is_bfloat16_supported(),
             bf16=is_bfloat16_supported(),
             logging_steps=1,
@@ -70,6 +70,7 @@ def main():
         ),
     )
     trainer.train()
+    model.save_pretrained_gguf('./llm_models', tokenizer, quantization_method='q4_k_m')
 
 
 if __name__ == '__main__':

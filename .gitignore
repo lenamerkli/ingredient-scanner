@@ -2,6 +2,9 @@
 /test
 
 /llama_cpp
+/llama.cpp
+
+/llm_models
 
 *.ini
 
