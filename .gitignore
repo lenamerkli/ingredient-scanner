@@ -6,6 +6,10 @@
 
 /llm_models
 
+/_unsloth_sentencepiece_temp
+
+.venv*/
+
 *.ini
 
 *.kate-swp

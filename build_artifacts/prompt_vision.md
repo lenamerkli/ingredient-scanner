@@ -1,0 +1,1 @@
+Im Bild ist die Rückseite einer Verpackung zu sehen. Auf dieser stehen die Zutaten (auch Inhaltsstoffe genannt) und wahrscheinlich auch die Verunreinigungen (auch "Enthält" oder "Kann Spuren von enthalten" genannt) geschrieben. Liste diese auf. Falls mehrere Sprachen vorhanden sind, verwende Deutsch.
