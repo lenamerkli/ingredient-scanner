@@ -1,8 +1,6 @@
 import torch
 import torchvision
 import os
-import cv2
-import numpy as np
 from PIL import Image
 from datetime import datetime
 
@@ -16,14 +14,13 @@ __all__ = [
     'TRANSFORM',
     'MARGIN',
     'GRID_SIZE',
-    'apply_custom_transform',
-    'generate_grid',
     'decrease_size',
     'PROMPT_LLM',
     'PROMPT_CLAUDE',
     'PROMPT_VISION',
     'EOS',
     'GRAMMAR',
+    'SYSTEM_PROMPT',
 ]
 
 
@@ -41,6 +38,7 @@ with open('prompt_claude.md', 'r', encoding='utf-8') as _f:
 with open('prompt_vision.md', 'r', encoding='utf-8') as _f:
     PROMPT_VISION = _f.read()
 EOS = '\n<|im_end|>'
+SYSTEM_PROMPT = 'Du bist ein hilfreicher assistant.'
 with open('grammar.gbnf', 'r', encoding='utf-8') as _f:
     GRAMMAR = _f.read()
 

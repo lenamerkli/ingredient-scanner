@@ -189,14 +189,28 @@ def main() -> None:
             model_path=relative_path('llm.Q4_K_M.gguf'),
             n_gpu_layers=n_gpu_layers,
         )
-        llm_result = llm.create_completion(
-            PROMPT_LLM.replace('{{old_data}}', text),
+        llm_result = llm.create_chat_completion(
+            messages=[
+                {
+                    'role': 'system',
+                    'content': SYSTEM_PROMPT,
+                },
+                {
+                    'role': 'user',
+                    'content': PROMPT_LLM.replace('{{old_data}}', text),
+                },
+            ],
             max_tokens=1024,
             temperature=0,
             grammar=GRAMMAR,
         )
-        ingredients = json.loads('{' + llm_result['choices'][0]['text'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
-    print(json.dumps(ingredients, indent=4))
+        try:
+            ingredients = json.loads(
+                '{' + llm_result['choices'][0]['message']['content'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
+        except Exception as e:
+            print(f"{llm_result=}")
+            raise e
+        print(json.dumps(ingredients, indent=4))
 
 
 if __name__ == '__main__':
