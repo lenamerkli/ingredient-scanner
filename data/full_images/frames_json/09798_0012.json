@@ -1,0 +1,32 @@
+{
+  "top": {
+    "left": {
+      "x": 220,
+      "y": 427
+    },
+    "right": {
+      "x": 514,
+      "y": 422
+    }
+  },
+  "bottom": {
+    "left": {
+      "x": 219,
+      "y": 1049
+    },
+    "right": {
+      "x": 500,
+      "y": 1040
+    }
+  },
+  "curvature": {
+    "top": {
+      "x": null,
+      "y": null
+    },
+    "bottom": {
+      "x": null,
+      "y": null
+    }
+  }
+}
