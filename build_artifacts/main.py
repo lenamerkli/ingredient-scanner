@@ -88,23 +88,27 @@ def main() -> None:
          max(data['curvature']['top']['y'] - margin_y, 0)),
         (data['curvature']['bottom']['x'],
          min(data['curvature']['bottom']['y'] + margin_y, image_size[1])),
-    ])
-    nx, ny = GRID_SIZE, GRID_SIZE
-    grid_x, grid_y = generate_grid(nx, ny, points)
-    aspect_ratio = (
-        (math.sqrt((data['top']['right']['x'] - data['top']['left']['x']) ** 2 +
-                   (data['top']['right']['y'] - data['top']['left']['y']) ** 2) +
-         math.sqrt((data['bottom']['right']['x'] - data['bottom']['left']['x']) ** 2 +
-                   (data['bottom']['right']['y'] - data['bottom']['left']['y']) ** 2)) / 2,
-        (math.sqrt((data['top']['left']['x'] - data['bottom']['left']['x']) ** 2 +
-                   (data['top']['left']['y'] - data['bottom']['left']['y']) ** 2) +
-         math.sqrt((data['top']['right']['x'] - data['bottom']['right']['x']) ** 2 +
-                   (data['top']['right']['y'] - data['bottom']['right']['y']) ** 2)) / 2
-    )
-    aspect_ratio = (1, aspect_ratio[1] / aspect_ratio[0]) \
-        if aspect_ratio[0] <= aspect_ratio[1] \
-        else (aspect_ratio[0] / aspect_ratio[1], 1)
-    warped_image = apply_custom_transform(image, grid_x, grid_y, aspect_ratio)
+    ], dtype=np.float32)
+    points_float: list[list[float]] = points.tolist()
+    max_height = int(max([  # y: top left - bottom left, top right - bottom right, curvature top - curvature bottom
+        abs(points_float[0][1] - points_float[3][1]),
+        abs(points_float[1][1] - points_float[4][1]),
+        abs(points_float[2][1] - points_float[5][1]),
+    ]))
+    max_width = int(max([  # x: top left - top right, bottom left - bottom right
+        abs(points_float[0][0] - points_float[1][0]),
+        abs(points_float[3][0] - points_float[2][0]),
+    ]))
+    destination_points = np.array([
+        [0, 0],
+        [max_width - 1, 0],
+        [max_width - 1, max_height - 1],
+        [0, max_height - 1],
+        [max_width // 2, 0],
+        [max_width // 2, max_height - 1],
+    ], dtype=np.float32)
+    homography, _ = cv2.findHomography(points, destination_points)
+    warped_image = cv2.warpPerspective(image, homography, (max_width, max_height))
     cv2.imwrite('_warped_image.png', warped_image)
     del data
     if ENGINE[0] == 'easyocr':
@@ -151,7 +155,7 @@ def main() -> None:
         # os.remove('_warped_image.webp')
         try:
             data = response.json()
-            ingredients = json.loads('{' + data['completions'][0]['text'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
+            ingredients = json.loads('{' + data['content'][0]['text'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
         except Exception as e:
             print(data)
             raise e

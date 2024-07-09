@@ -104,75 +104,13 @@ class NeuralNet(torch.nn.Module):
         return x
 
 
-def generate_grid(nx, ny, corners):
-    """
-    Generate a grid for remapping based on corner points and curvature indicators.
-    :param nx: Number of divisions along the width.
-    :param ny: Number of divisions along the height.
-    :param corners: Array of 6 points (tl, tr, bl, br, tm, bm).
-    :return: Mapping coordinates for remapping.
-    """
-    tl, tr, bl, br, tm, bm = corners
-    grid_x = np.zeros((ny, nx), dtype=np.float32)
-    grid_y = np.zeros((ny, nx), dtype=np.float32)
-
-    # Adjust the top and bottom sides to include curvature
-    top_x = np.linspace(tl[0], tr[0], nx)
-    top_y = np.linspace(tl[1], tr[1], nx)
-    bottom_x = np.linspace(bl[0], br[0], nx)
-    bottom_y = np.linspace(bl[1], br[1], nx)
-
-    # Curvature adjustments
-    # Adjust by sine curve interpolation between middle and edge curvature points
-    top_curve_adjust = ((tm[1] - np.mean([tl[1], tr[1]])) *
-                        np.sin(np.linspace(0, np.pi, nx)))
-    bottom_curve_adjust = ((bm[1] - np.mean([bl[1], br[1]])) *
-                           np.sin(np.linspace(0, np.pi, nx)))
-
-    top_y += top_curve_adjust
-    bottom_y += bottom_curve_adjust
-
-    for i in range(ny):
-        inter_top_x = np.linspace(top_x[i], bottom_x[i], nx)
-        inter_top_y = np.linspace(top_y[i], bottom_y[i], nx)
-
-        inter_bottom_x = np.linspace(top_x[i], bottom_x[i], nx)
-        inter_bottom_y = np.linspace(top_y[i], bottom_y[i], nx)
-
-        t = i / (ny - 1)
-        grid_x[i, :] = (1 - t) * inter_top_x + t * inter_bottom_x
-        grid_y[i, :] = (1 - t) * inter_top_y + t * inter_bottom_y
-
-    return grid_x, grid_y
-
-
-def apply_custom_transform(image, grid_x, grid_y, aspect_ratio):
-    """
-    Apply a custom transformation defined by grid mapping.
-    :param aspect_ratio: Aspect ratio of the output image.
-    :param image: Input image.
-    :param grid_x: X coordinates of the destination grid.
-    :param grid_y: Y coordinates of the destination grid.
-    :return: Warped image with the custom transform applied.
-    """
-    warped = cv2.remap(image, grid_x, grid_y, cv2.INTER_LANCZOS4)
-    # rotate 90 degrees to the right due to the remapping
-    warped = cv2.rotate(warped, cv2.ROTATE_90_CLOCKWISE)
-    # mirror the image due to the remapping
-    warped = cv2.flip(warped, 1)
-    # adjust for the aspect ratio
-    warped = cv2.resize(warped, (int(aspect_ratio[0] * GRID_SIZE), int(aspect_ratio[1] * GRID_SIZE)),
-                        interpolation=cv2.INTER_LANCZOS4)
-    return warped
-
-
 def decrease_size(input_path, output_path, max_size, max_side):
     with Image.open(input_path) as img:
         original_size = os.path.getsize(input_path)
-        if original_size <= max_size:
-            print("Image is already below the maximum size.")
-            return True
         width, height = img.size
+        if original_size <= max_size and width <= max_side and height <= max_side:
+            img.save(output_path, format=output_path.split('.')[-1].upper())
+            print("Image is already below the maximum size.")
         while width > 24 and height > 24:
             img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
             img_resized.save(output_path, format=output_path.split('.')[-1].upper())
