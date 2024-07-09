@@ -15,6 +15,7 @@ from utils import *
 
 load_dotenv()
 
+SCALE_FACTOR = 4
 MAX_SIZE = 5_000_000
 MAX_SIDE = 8_000
 # ENGINE = ['easyocr']
@@ -94,11 +95,11 @@ def main() -> None:
         abs(points_float[0][1] - points_float[3][1]),
         abs(points_float[1][1] - points_float[4][1]),
         abs(points_float[2][1] - points_float[5][1]),
-    ]))
+    ])) * SCALE_FACTOR
     max_width = int(max([  # x: top left - top right, bottom left - bottom right
         abs(points_float[0][0] - points_float[1][0]),
         abs(points_float[3][0] - points_float[2][0]),
-    ]))
+    ])) * SCALE_FACTOR
     destination_points = np.array([
         [0, 0],
         [max_width - 1, 0],
