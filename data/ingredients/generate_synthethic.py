@@ -83,7 +83,20 @@ def main():
                 num_asterisks = random.randint(1, 3)
                 ingredients[j] = ingredients[j] + '*' * num_asterisks
             if random.random() < 0.3:
-                ingredients[j] = ingredients[j] + f" ({random.randint(1, 90)}%)"
+                rand_value = str(random.randint(1, 90))
+                if random.random() < 0.5:
+                    rand_value = rand_value + '.' + str(random.randint(1, 9))
+                if random.random() < 0.2:
+                    ingredients[j] = ingredients[j] + f" ({rand_value}%)"
+                elif random.random() < 0.2:
+                    ingredients[j] = ingredients[j] + f" ({rand_value} g)"
+                else:
+                    ingredients[j] = ingredients[j] + f" ({rand_value} ml)"
+                if random.random() < 0.5:
+                    ingredients[j] = ingredients[j].replace(' (', '').replace(')', '')
+            if random.random() < 0.2:
+                choice = random.choice(['Emulgator', 'Farbstoff'])
+                ingredients[j] = choice + ': ' + ingredients[j]
         if random.random() < 0.7:
             instruction += '\n' + '\n'.join(ingredients)
         elif random.random() < 0.5:
