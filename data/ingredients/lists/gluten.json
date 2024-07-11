@@ -10,8 +10,8 @@
   "Dinkelvollkornmehl",
   "Roggen",
   "Roggenmehl",
-  "Rogenvollkorn",
-  "Rogenvollkornmehl",
+  "Roggenvollkorn",
+  "Roggenvollkornmehl",
   "Gerste",
   "Gerstenmehl",
   "Gerstenvollkorn",
@@ -42,8 +42,5 @@
   "Einkornvollkornmehl",
   "Mehl",
   "Vollkorn",
-  "Vollkornmehl",
-  "Vollkornvollkorn",
-  "Vollkornvollkornmehl",
   "Vollkornmehl"
 ]
