@@ -26,6 +26,7 @@ __all__ = [
     'SOMETIMES_ANIMAL',
     'MILK',
     'GLUTEN',
+    'LEGAL_NOTICE',
 ]
 
 
@@ -54,6 +55,11 @@ with open('milk.json', 'r', encoding='utf-8') as _f:
     MILK = json.load(_f)
 with open('gluten.json', 'r', encoding='utf-8') as _f:
     GLUTEN = json.load(_f)
+
+
+LEGAL_NOTICE = ('Dieses Programm ist nur für Forschungszwecke gedacht. Fehler können nicht ausgeschlossen werden und '
+                'sind wahrscheinlich vorhanden. Die Erkennung von Zutaten und Verunreinigungen ist nur zum schnellen '
+                'Aussortieren und nicht zum Überprüfen gedacht.')
 
 
 def current_time() -> str:

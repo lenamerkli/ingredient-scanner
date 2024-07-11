@@ -230,6 +230,8 @@ def main() -> None:
     print('=' * 64)
     print('Gefundene Gluten: ' + ', '.join(gluten_ingredients) if len(gluten_ingredients) > 0 else 'keine')
     print('=' * 64)
+    print(LEGAL_NOTICE)
+    print('=' * 64)
 
 
 if __name__ == '__main__':
