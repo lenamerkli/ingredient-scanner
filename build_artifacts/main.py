@@ -213,8 +213,10 @@ def main() -> None:
             raise e
     animal_ingredients = [item for item in ingredients['Zutaten'] if item in ANIMAL]
     sometimes_animal_ingredients = [item for item in ingredients['Zutaten'] if item in SOMETIMES_ANIMAL]
-    milk_ingredients = [item for item in ingredients['Zutaten'] if item in MILK]
-    gluten_ingredients = [item for item in ingredients['Zutaten'] if item in GLUTEN]
+    milk_ingredients = ([item for item in ingredients['Zutaten'] if item in MILK]
+                        + [item for item in ingredients['Verunreinigungen'] if item in MILK])
+    gluten_ingredients = ([item for item in ingredients['Zutaten'] if item in GLUTEN]
+                          + [item for item in ingredients['Verunreinigungen'] if item in GLUTEN])
     print('=' * 64)
     print('Zutaten: ' + ', '.join(ingredients['Zutaten']))
     print('=' * 64)
