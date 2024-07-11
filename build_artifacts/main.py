@@ -214,6 +214,7 @@ def main() -> None:
     animal_ingredients = [item for item in ingredients['Zutaten'] if item in ANIMAL]
     sometimes_animal_ingredients = [item for item in ingredients['Zutaten'] if item in SOMETIMES_ANIMAL]
     milk_ingredients = [item for item in ingredients['Zutaten'] if item in MILK]
+    gluten_ingredients = [item for item in ingredients['Zutaten'] if item in GLUTEN]
     print('=' * 64)
     print('Zutaten: ' + ', '.join(ingredients['Zutaten']))
     print('=' * 64)
@@ -226,6 +227,8 @@ def main() -> None:
           + (', '.join(sometimes_animal_ingredients) if len(sometimes_animal_ingredients) > 0 else 'keine'))
     print('=' * 64)
     print('Gefundene Milchprodukte: ' + ', '.join(milk_ingredients) if len(milk_ingredients) > 0 else 'keine')
+    print('=' * 64)
+    print('Gefundene Gluten: ' + ', '.join(gluten_ingredients) if len(gluten_ingredients) > 0 else 'keine')
     print('=' * 64)
 
 

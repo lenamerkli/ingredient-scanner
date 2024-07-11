@@ -22,6 +22,7 @@ def main() -> None:
     shutil.copy(relative_path('data/ingredients/lists/sometimes_animal.json'),
                 relative_path('build/sometimes_animal.json'))
     shutil.copy(relative_path('data/ingredients/lists/milk.json'), relative_path('build/milk.json'))
+    shutil.copy(relative_path('data/ingredients/lists/gluten.json'), relative_path('build/gluten.json'))
 
 
 if __name__ == '__main__':

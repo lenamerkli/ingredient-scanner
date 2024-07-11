@@ -25,6 +25,7 @@ __all__ = [
     'ANIMAL',
     'SOMETIMES_ANIMAL',
     'MILK',
+    'GLUTEN',
 ]
 
 
@@ -51,6 +52,8 @@ with open('sometimes_animal.json', 'r', encoding='utf-8') as _f:
     SOMETIMES_ANIMAL = json.load(_f)
 with open('milk.json', 'r', encoding='utf-8') as _f:
     MILK = json.load(_f)
+with open('gluten.json', 'r', encoding='utf-8') as _f:
+    GLUTEN = json.load(_f)
 
 
 def current_time() -> str:
