@@ -24,6 +24,7 @@ __all__ = [
     'SYSTEM_PROMPT',
     'ANIMAL',
     'SOMETIMES_ANIMAL',
+    'MILK',
 ]
 
 
@@ -48,6 +49,8 @@ with open('animal.json', 'r', encoding='utf-8') as _f:
     ANIMAL = json.load(_f)
 with open('sometimes_animal.json', 'r', encoding='utf-8') as _f:
     SOMETIMES_ANIMAL = json.load(_f)
+with open('milk.json', 'r', encoding='utf-8') as _f:
+    MILK = json.load(_f)
 
 
 def current_time() -> str:

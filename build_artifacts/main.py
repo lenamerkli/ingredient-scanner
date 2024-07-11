@@ -213,6 +213,7 @@ def main() -> None:
             raise e
     animal_ingredients = [item for item in ingredients['Zutaten'] if item in ANIMAL]
     sometimes_animal_ingredients = [item for item in ingredients['Zutaten'] if item in SOMETIMES_ANIMAL]
+    milk_ingredients = [item for item in ingredients['Zutaten'] if item in MILK]
     print('=' * 64)
     print('Zutaten: ' + ', '.join(ingredients['Zutaten']))
     print('=' * 64)
@@ -223,6 +224,8 @@ def main() -> None:
     print('=' * 64)
     print('Gefundene potenzielle tierische Zutaten: '
           + (', '.join(sometimes_animal_ingredients) if len(sometimes_animal_ingredients) > 0 else 'keine'))
+    print('=' * 64)
+    print('Gefundene Milchprodukte: ' + ', '.join(milk_ingredients) if len(milk_ingredients) > 0 else 'keine')
     print('=' * 64)
 
 
