@@ -19,7 +19,7 @@ SCALE_FACTOR = 4
 MAX_SIZE = 5_000_000
 MAX_SIDE = 8_000
 # ENGINE = ['easyocr']
-ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
+ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620']
 # ENGINE = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
 
 
@@ -203,7 +203,7 @@ def main() -> None:
             ],
             max_tokens=1024,
             temperature=0,
-            grammar=GRAMMAR,
+            # grammar=GRAMMAR,
         )
         try:
             ingredients = json.loads(
@@ -211,7 +211,19 @@ def main() -> None:
         except Exception as e:
             print(f"{llm_result=}")
             raise e
-        print(json.dumps(ingredients, indent=4))
+    animal_ingredients = [item for item in ingredients['Zutaten'] if item in ANIMAL]
+    sometimes_animal_ingredients = [item for item in ingredients['Zutaten'] if item in SOMETIMES_ANIMAL]
+    print('=' * 64)
+    print('Zutaten: ' + ', '.join(ingredients['Zutaten']))
+    print('=' * 64)
+    print('Kann Spuren von ' + ', '.join(ingredients['Verunreinigungen']) + ' enthalten.')
+    print('=' * 64)
+    print('Gefundene tierische Zutaten: '
+          + (', '.join(animal_ingredients) if len(animal_ingredients) > 0 else 'keine'))
+    print('=' * 64)
+    print('Gefundene potenzielle tierische Zutaten: '
+          + (', '.join(sometimes_animal_ingredients) if len(sometimes_animal_ingredients) > 0 else 'keine'))
+    print('=' * 64)
 
 
 if __name__ == '__main__':

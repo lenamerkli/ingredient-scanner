@@ -18,6 +18,9 @@ def main() -> None:
     shutil.copy(relative_path(f"models/{vision_model}"), relative_path('build/vision_model.pt'))
     shutil.copy(relative_path('.env'), relative_path('build/.env'))
     shutil.copy(relative_path('llm_models/unsloth.Q4_K_M.gguf'), relative_path('build/llm.Q4_K_M.gguf'))
+    shutil.copy(relative_path('data/ingredients/lists/animal.json'), relative_path('build/animal.json'))
+    shutil.copy(relative_path('data/ingredients/lists/sometimes_animal.json'),
+                relative_path('build/sometimes_animal.json'))
 
 
 if __name__ == '__main__':

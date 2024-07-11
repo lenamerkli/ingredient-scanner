@@ -1,6 +1,7 @@
 import torch
 import torchvision
 import os
+import json
 from PIL import Image
 from datetime import datetime
 
@@ -21,6 +22,8 @@ __all__ = [
     'EOS',
     'GRAMMAR',
     'SYSTEM_PROMPT',
+    'ANIMAL',
+    'SOMETIMES_ANIMAL',
 ]
 
 
@@ -41,6 +44,10 @@ EOS = '\n<|im_end|>'
 SYSTEM_PROMPT = 'Du bist ein hilfreicher assistant.'
 with open('grammar.gbnf', 'r', encoding='utf-8') as _f:
     GRAMMAR = _f.read()
+with open('animal.json', 'r', encoding='utf-8') as _f:
+    ANIMAL = json.load(_f)
+with open('sometimes_animal.json', 'r', encoding='utf-8') as _f:
+    SOMETIMES_ANIMAL = json.load(_f)
 
 
 def current_time() -> str:
