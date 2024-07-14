@@ -101,7 +101,7 @@
     \chapter{First Vision Layer}
     
         \section{Dataset}
-            The dataset contains just 138 hand-labeled images. Some labels do not or only have parts of the curvature data which can easily interpolated from the other points assuming it lies on a straight line. On GitHub, this dataset is distributed over two directories: \href{https://github.com/lenamerkli/ingredient-scanner/tree/main/data/full_images/frames}{/data/full\_images/frames} and \href{https://github.com/lenamerkli/ingredient-scanner/tree/main/data/full_images/frames_json}{/data/full\_images/frames\_json}.
+            The dataset contains just 190 hand-labeled images. Some labels do not or only have parts of the curvature data which can easily interpolated from the other points assuming it lies on a straight line. On GitHub, this dataset is distributed over two directories: \href{https://github.com/lenamerkli/ingredient-scanner/tree/main/data/full_images/frames}{/data/full\_images/frames} and \href{https://github.com/lenamerkli/ingredient-scanner/tree/main/data/full_images/frames_json}{/data/full\_images/frames\_json}.
     
             \subsection{Data Aggregation}
                 As there was no existing dataset for such a project (hence this paper exists), the authors created a dataset themselves by collecting and labeling photos. A custom viewer, \href{https://github.com/lenamerkli/ingredient-scanner/tree/main/data/full_images/frames_json}{/data/full\_images/viewer.py}, has aided in the labeling process because it outputs the coordinates of all mouse clicks.
@@ -116,7 +116,7 @@
                     \item $\sim 50\%$ ImageOps.invert: Invert all the values of each color channel.
                     \item $\sim 75\%$ apply\_background: Zooms and rotates the image and places it on a random spot on a random background \cite{indoorCVPR_09}.
                 \end{itemize}
-                These are implemented in \href{https://github.com/lenamerkli/ingredient-scanner/blob/main/data/full_images/generate_synthetic.py}{/data/full\_images/generate\_synthetic.py}. Some of them only have a certain chance to be applied, see the percentages before the function name. All of this results in a 30 to 31 times larger training dataset.
+                These are implemented in \href{https://github.com/lenamerkli/ingredient-scanner/blob/main/data/full_images/generate_synthetic.py}{/data/full\_images/generate\_synthetic.py}. Some of them only have a certain chance to be applied, see the percentages before the function name. All of this results in a 15 to 16 times larger training dataset.
                 
             \subsection{Reinforcement Learning from Human Feedback}
                 Even though it was planned to use RLHF to increase the size of the dataset more efficiently, this idea was abandoned due to the introduction of the aforementioned viewer which already increased productivity enough.
@@ -335,6 +335,59 @@
                 
         \section{Training}
             In contrast to the project plan, a RTX 4070 laptop was used. This had the major benefit of faster prototyping and debugging over the planned RTX 4060 server.
+            
+            \begin{figure}[h]
+                \centering
+                \begin{tikzpicture}
+                    \begin{axis}[
+                        xlabel=Epoch,
+                        ylabel=Value,
+                        legend entries={Loss, Average Distance},
+                        legend pos=north east,
+                        ymin=0,
+                        ymax=2,
+                        ytick={0,0.25,0.5,0.75,1,1.25,1.5,1.75,2},
+                        grid=major,
+                        width=1\textwidth,
+                        height=0.28\textheight,
+                        ]
+                        
+                        % Plot Loss
+                        \addplot[color=blue, mark=none] coordinates {
+                            (1,1.890360) (2,1.814630) (3,1.734064) (4,1.114733) (5,1.065060)
+                            (6,0.907810) (7,1.153955) (8,0.768925) (9,1.011997) (10,0.826659)
+                            (11,1.076818) (12,0.969075) (13,0.832148) (14,1.087441) (15,0.717045)
+                            (16,1.101392) (17,0.984297) (18,0.786416) (19,0.687485) (20,1.085552)
+                            (21,0.891852) (22,0.698047) (23,0.937117) (24,1.190383) (25,1.080227)
+                            (26,0.824159) (27,0.763055) (28,0.823074) (29,1.029521) (30,0.808638)
+                            (31,0.736400) (32,0.939033) (33,1.017106) (34,1.086404) (35,1.143240)
+                            (36,0.535833) (37,0.852938) (38,0.938702) (39,0.987053) (40,0.915911)
+                            (41,0.976535) (42,0.978038) (43,1.128619) (44,0.808517) (45,1.145513)
+                            (46,0.987002) (47,0.909692) (48,0.779287) (49,0.782210) (50,0.844282)
+                            (51,0.871948) (52,1.277896) (53,0.920692)
+                        };
+                        
+                        % Plot Average Distance
+                        \addplot[color=red, mark=none] coordinates {
+                            (1,0.0896) (2,0.0772) (3,0.0647) (4,0.0567) (5,0.0528)
+                            (6,0.0505) (7,0.0496) (8,0.0494) (9,0.0493) (10,0.0493)
+                            (11,0.0495) (12,0.0491) (13,0.0489) (14,0.0490) (15,0.0492)
+                            (16,0.0483) (17,0.0487) (18,0.0485) (19,0.0488) (20,0.0487)
+                            (21,0.0485) (22,0.0483) (23,0.0491) (24,0.0479) (25,0.0487)
+                            (26,0.0490) (27,0.0480) (28,0.0485) (29,0.0488) (30,0.0481)
+                            (31,0.0478) (32,0.0485) (33,0.0482) (34,0.0481) (35,0.0486)
+                            (36,0.0482) (37,0.0483) (38,0.0484) (39,0.0480) (40,0.0482)
+                            (41,0.0484) (42,0.0488) (43,0.0484) (44,0.0482) (45,0.0481)
+                            (46,0.0477) (47,0.0487) (48,0.0485) (49,0.0488) (50,0.0486)
+                            (51,0.0484) (52,0.0485) (53,0.0479)
+                        };
+                        
+                    \end{axis}
+                \end{tikzpicture}
+                \caption{Training loss (IngredientScannerLoss, $\alpha=1.0, \beta=1.2, batch=8, learningRate=5*10^{-6}$)}
+                \label{fig:training}
+            \end{figure}
+            
     
     \chapter{Second Vision Layer}
         The proposed second vision layer was never developed due to several reasons:

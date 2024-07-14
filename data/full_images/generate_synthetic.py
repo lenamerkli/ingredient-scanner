@@ -12,7 +12,7 @@ from video_to_frames import relative_path
 
 BACKGROUNDS = [_file for _file in os.listdir(relative_path('background')) if _file.endswith('.jpg')]
 IMAGE_SIZE = (720, 1280)
-REPETITIONS = 2
+REPETITIONS = 1
 SEED = 2024 - 7 - 28
 
 

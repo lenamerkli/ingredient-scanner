@@ -13,12 +13,13 @@ from general import (
     torchvision,
 )
 
-NUM_EPOCHS = 32
-BATCH_SIZE = 8
-LEARNING_RATE = 0.00001
+NUM_EPOCHS = 53
+BATCH_SIZE = 16
+LEARNING_RATE = 0.000005
 CRITERION = 'IngredientScannerLoss'
 LOSS_ALPHA = 2.0
 LOSS_BETA = 1.2
+ENABLE_TEST_TRAIN = False
 
 
 def calculate_eval(model: NeuralNet, test_loader: torch.utils.data.DataLoader) -> float:
@@ -89,20 +90,47 @@ def main():
             epoch += 1
             scheduler.step()
         except KeyboardInterrupt:
-            if epoch >= NUM_EPOCHS:
-                raise KeyboardInterrupt
-            else:
-                train = False
-                NUM_EPOCHS = epoch
+            if not keyboard_interrupt:
+                print('Keyboard interrupt detected')
+            train = False
+            NUM_EPOCHS = epoch
         try:
-            if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
-                train = False
             if loss_history:
                 average_distance = calculate_eval(model, test_loader)
-                print(f"Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], Loss: {loss_history[-1]:.6f}, "
-                      f"Average distance: {average_distance:.4f}")
+                print(f"Synthetic Dataset, Epoch [{epoch}/{NUM_EPOCHS}], Step [{i + 1}/{n_total_steps}], "
+                      f"Loss: {loss_history[-1]:.6f}, Average distance: {average_distance:.4f}")
+            if epoch >= NUM_EPOCHS and loss_history[-1] <= required_loss(loss_history):
+                train = False
         except KeyboardInterrupt:
+            print('Keyboard interrupt detected')
             keyboard_interrupt = True
+    if ENABLE_TEST_TRAIN:
+        for epoch2 in range(NUM_EPOCHS // 2 + 1):
+            try:
+                model.train()
+                for i, (images, data) in enumerate(test_loader):
+                    images = images.to(DEVICE)
+                    data = data.to(DEVICE)
+                    outputs = model(images)
+                    loss = criterion(outputs, data)
+                    if loss.dim() > 0:
+                        loss = loss.mean()
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    loss_history.append(loss.item())
+                scheduler.step()
+            except KeyboardInterrupt:
+                print('Keyboard interrupt detected')
+                break
+            try:
+                if loss_history:
+                    average_distance = calculate_eval(model, test_loader)
+                    print(f"Test Dataset,Epoch [{epoch2}/{NUM_EPOCHS // 2 + 1}], Step [{i + 1}/{n_total_steps}], "
+                          f"Loss: {loss_history[-1]:.6f}, Average distance: {average_distance:.4f}")
+            except KeyboardInterrupt:
+                print('Keyboard interrupt detected')
+                break
     print('Finished Training')
     average_distance = calculate_eval(model, test_loader)
     print(f"Average distance: {average_distance:.4f}")
@@ -112,6 +140,7 @@ def main():
         'average_distance': average_distance,
         'batch_size': BATCH_SIZE,
         'criterion': CRITERION,
+        'enable_test_train': ENABLE_TEST_TRAIN,
         'image_size_x': IMAGE_SIZE[0],
         'image_size_y': IMAGE_SIZE[1],
         'last_loss': loss_history[-1],
@@ -121,7 +150,6 @@ def main():
         'loss_beta': LOSS_BETA,
         'num_epochs': NUM_EPOCHS,
         'start_time': start_time,
-        'type': 'base',
     }
     with open(relative_path(f"models/{time_stamp}.json"), 'w') as f:
         json.dump(model_data, f, indent=2)
