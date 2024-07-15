@@ -7,6 +7,7 @@
 \usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{subcaption}
+\usepackage{placeins}
 \usepackage{pgfplots}
 \usepackage[hidelinks]{hyperref}
 \usepackage[backend=bibtex,urldate=iso]{biblatex}
@@ -16,16 +17,22 @@
 
 \addbibresource{references.bib}
 
-% Title Page
+
 \title{Automating Reading of Ingredient Labels with Computer Vision}
 \author{Lena Merkli and Sonja Merkli}
 
 
 \begin{document}
     \maketitle
-    %\begin{abstract}
-    %    TODO
-    %\end{abstract}
+    
+    \begin{abstract}
+        With the recent advancements in computer vision and optical character recognition and using a convolutional neural network \cite{he2015deepresiduallearningimage} to cut out the product from a picture, it has now become possible to reliably extract ingredient lists from the back of a product using the Anthropic API \cite{claude3-5sonnet}. Open-weight or even only on-device optical character recognition lacks the quality to be used in a production environment, although the progress is promising. The Anthropic API is also currently not feasible due to the high cost of 100 pictures per 1 Swiss Franc.
+        
+        The training code and data is available on GitHub: \url{https://github.com/lenamerkli/ingredient-scanner/}. An inference example can be found on HuggingFace: \url{https://huggingface.co/lenamerkli/ingredient-scanner}.
+        
+        This is an entry for the 2024 Swiss AI competition. More information: \url{https://www.ki-wettbewerb.ch/}.
+    \end{abstract}
+    
     \tableofcontents
 
     \chapter{Project Plan}
@@ -433,7 +440,11 @@
             
     \chapter{Large Language Model}
     
+        \section{Dataset}
+            A synthetic data generator created a dataset with $10^{4}$ examples based upon patterns noticed in the optical character recognition engine of the local visual language model.
+    
         \section{Training}
+            The local version of unsloth \cite{unsloth} has been used for fine-tuning \cite{finetuning} \cite{finetune_qwen2}. The base model is Qwen2-0.5B-Instruct \cite{qwen2} with 4bit bits-and-bytes \cite{bitsandbytes} pulled from \url{https://huggingface.co/unsloth/Qwen2-0.5B-bnb-4bit}.
             \begin{figure}[h]
                 \centering
                 \begin{tikzpicture}
@@ -463,10 +474,127 @@
                 \caption{training loss (jagged due to rounding errors)}
                 \label{fig:unsloth}
             \end{figure}
-             
+            
+        \section{Compression}
+            The trained model is compressed to Q4\_K\_M using the standardized GUFF \cite{gguf} format, version three, for faster inference later on.
+            
+    \chapter{Result \& Conclusion}
+        \section{Examples}
+            \begin{figure}[h]
+                \centering
+                \begin{subfigure}{0.45\textwidth}
+                    \centering
+                    \includegraphics[width=\textwidth]{test_image_1.png}
+                    \caption{Image 1}
+                    \label{fig:test_image_1}
+                \end{subfigure}
+                \hfill
+                \begin{subfigure}{0.45\textwidth}
+                    \centering
+                    \includegraphics[width=\textwidth]{test_image_2.png}
+                    \caption{Image 2}
+                    \label{fig:test_image_2}
+                \end{subfigure}
+                \caption{Images not seen in training}
+                \label{fig:subsection-test}
+            \end{figure}
+            \begin{figure}[h]
+                \centering
+                \begin{subfigure}{0.45\textwidth}
+                    \centering
+                    ================
+                    Zutaten: Cashewkerne, Haselnüsse, Kokosblütenzucker, Kakaobohnen gemahlen, Mandelöl kaltgepresst, Kakaobutter, Himbeeren gefriergetrocknet, Macapulver, Bourbon-Vanille
+                    ================
+                    Ohne Verunreinigungen
+                    ================
+                    Gefundene tierische Zutaten: keine
+                    ================
+                    Gefundene potenziell tierische Zutaten: keine
+                    ================
+                    Gefundene Milchprodukte: keine
+                    ================
+                    Gefundene Gluten: keine
+                    ================
+                    \caption{Result for image 1}
+                    \label{fig:text_test_image_1}
+                \end{subfigure}
+                \hfill
+                \begin{subfigure}{0.45\textwidth}
+                    \centering
+                    ================
+                    Zutaten: Datteln getrocknet, Sultaninen geölt, Haselnüsse geröstet, Mandelmus, Cashewnüsse, Haferflocken glutenfrei, Haselnussmus, Mandeln, Dattelsirup, Meersalz
+                    ================
+                    Kann Spuren von Soja, Milch, anderen Nüssen enthalten.
+                    ================
+                    Gefundene tierische Zutaten: keine
+                    ================
+                    Gefundene potenziell tierische Zutaten: keine
+                    ================
+                    Gefundene Milchprodukte: Milch
+                    ================
+                    Gefundene Gluten: keine
+                    ================
+                    \caption{Result for image 2}
+                    \label{fig:text_test_image_2}
+                \end{subfigure}
+                \caption{Results of the images above in German with OCR over API}
+                \label{fig:subsection-test-text}
+            \end{figure}
+            \begin{figure}[h]
+                \centering
+                \begin{subfigure}{0.45\textwidth}
+                    \centering
+                    ================
+                    Zutaten: Cashewnässe, Haselnüsse, Kakao-Bohnen, Mandelöl, Macapulver, Bourbon-Vanille
+                    ================
+                    Ohne Verunreinigungen
+                    ================
+                    Gefundene tierische Zutaten: keine
+                    ================
+                    Gefundene potenziell tierische Zutaten: keine
+                    ================
+                    Gefundene Milchprodukte: keine
+                    ================
+                    Gefundene Gluten: keine
+                    ================
+                    \caption{Result for image 1}
+                    \label{fig:text2_test_image_1}
+                \end{subfigure}
+                \hfill
+                \begin{subfigure}{0.45\textwidth}
+                    \centering
+                    ================
+                    Zutaten: Datteln, Sultaninen, Raisins, Sultanines, Haselnüsse, Haumensür, Mandelmus, Cashewenür, Haselnussmus, Mandeln, Dattelsirup, Meersalz
+                    ================
+                    Kann Spuren von Soja, Milch enthalten.
+                    ================
+                    Gefundene tierische Zutaten: keine
+                    ================
+                    Gefundene potenziell tierische Zutaten: keine
+                    ================
+                    Gefundene Milchprodukte: Milch
+                    ================
+                    Gefundene Gluten: keine
+                    ================
+                    \caption{Result for image 2}
+                    \label{fig:text2_test_image_2}
+                \end{subfigure}
+                \caption{Results of the images above in German with local OCR}
+                \label{fig:subsection-test-text2}
+            \end{figure}
+            \FloatBarrier
+        
+        \section{Conclusion}
+            Although local (aka. on-device) optical character recognition is not yet ready, we as the authors think of this project as a success. The project is currently not financially feasible due to the Anthropic API costing $\frac{1}{100}$ Swiss Francs. With more advances in machine learning, computer vision, character recognition and compute power, this approach will probably work on the smartphone itself.
+            
+            A lot of features could be added, such as detecting labels like ``lactose-free" or ``vegan", reading the identifying bar-code, and allowing multiple camera angles.
+            
+            The choice of an only 0.5B parameter local large language model was a mistake, as this is apparently not enough for the simple task of converting plain text or markdown into a JSON list.
+            
+            Due to resource constraints, a lot of synthetic data was used which probably negatively impacts the accuracy of the models.
         
 
 
-    \printbibliography
+    \printbibliography[heading=bibintoc]
 
 \end{document}
