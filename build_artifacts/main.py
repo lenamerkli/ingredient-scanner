@@ -19,8 +19,8 @@ SCALE_FACTOR = 4
 MAX_SIZE = 5_000_000
 MAX_SIDE = 8_000
 # ENGINE = ['easyocr']
-ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620']
-# ENGINE = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
+# ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620']
+ENGINE = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
 
 
 def main() -> None:
@@ -115,12 +115,12 @@ def main() -> None:
     if ENGINE[0] == 'easyocr':
         reader = easyocr.Reader(['de', 'fr', 'en'], gpu=True)
         result = reader.readtext('_warped_image.png')
-        # os.remove('_warped_image.png')
+        os.remove('_warped_image.png')
         text = '\n'.join([r[1] for r in result])
         ingredients = {}
     elif ENGINE[0] == 'anthropic':
         decrease_size('_warped_image.png', '_warped_image.webp', MAX_SIZE, MAX_SIDE)
-        # os.remove('_warped_image.png')
+        os.remove('_warped_image.png')
         with open('_warped_image.webp', 'rb') as f:
             base64_image = base64.b64encode(f.read()).decode('utf-8')
         response = requests.post(
@@ -153,7 +153,7 @@ def main() -> None:
                 ],
             }),
         )
-        # os.remove('_warped_image.webp')
+        os.remove('_warped_image.webp')
         try:
             data = response.json()
             ingredients = json.loads('{' + data['content'][0]['text'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
@@ -176,7 +176,7 @@ def main() -> None:
                 'image_path': relative_path('_warped_image.webp'),
             }),
         )
-        # os.remove('_warped_image.webp')
+        os.remove('_warped_image.webp')
         text: str = response.json()['text']
         ingredients = {}
     else:
@@ -220,7 +220,8 @@ def main() -> None:
     print('=' * 64)
     print('Zutaten: ' + ', '.join(ingredients['Zutaten']))
     print('=' * 64)
-    print('Kann Spuren von ' + ', '.join(ingredients['Verunreinigungen']) + ' enthalten.')
+    print(('Kann Spuren von ' + ', '.join(ingredients['Verunreinigungen']) + ' enthalten.')
+          if len(ingredients['Verunreinigungen']) > 0 else 'ohne Verunreinigungen')
     print('=' * 64)
     print('Gefundene tierische Zutaten: '
           + (', '.join(animal_ingredients) if len(animal_ingredients) > 0 else 'keine'))
@@ -228,9 +229,9 @@ def main() -> None:
     print('Gefundene potenzielle tierische Zutaten: '
           + (', '.join(sometimes_animal_ingredients) if len(sometimes_animal_ingredients) > 0 else 'keine'))
     print('=' * 64)
-    print('Gefundene Milchprodukte: ' + ', '.join(milk_ingredients) if len(milk_ingredients) > 0 else 'keine')
+    print('Gefundene Milchprodukte: ' + (', '.join(milk_ingredients) if len(milk_ingredients) > 0 else 'keine'))
     print('=' * 64)
-    print('Gefundene Gluten: ' + ', '.join(gluten_ingredients) if len(gluten_ingredients) > 0 else 'keine')
+    print('Gefundene Gluten: ' + (', '.join(gluten_ingredients) if len(gluten_ingredients) > 0 else 'keine'))
     print('=' * 64)
     print(LEGAL_NOTICE)
     print('=' * 64)
