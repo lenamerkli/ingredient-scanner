@@ -5,25 +5,19 @@ from transformers import TrainingArguments
 from datasets import load_dataset
 from general import relative_path
 
-import os
-import json
 
-
-MAX_SEQ_LENGTH = 2048
+MAX_SEQ_LENGTH: int = 2048  # maximum number of tokens the model can process
 DTYPE = None
-LOAD_IN_4BIT = True
+LOAD_IN_4BIT: bool = True
 BASE_MODEL_NAME = 'unsloth/Qwen2-0.5B-Instruct-bnb-4bit'
 
 
-def main():
-    # data = []
-    # for file in os.listdir(relative_path('data/ingredients/synthetic')):
-    #     if file.endswith('.json'):
-    #         with open(relative_path(f"data/ingredients/synthetic/{file}"), 'r', encoding='utf-8') as f:
-    #             data.append(json.load(f))
-    # with open(relative_path('tmp/ingredients/train.jsonl'), 'w', encoding='utf-8') as f:
-    #     for d in data:
-    #         f.write(json.dumps(d) + '\n')
+def main() -> None:
+    """
+    Train the language model
+    :return: None
+    """
+    # https://github.com/unsloth/unsloth/
     dataset = load_dataset(
         'json',
         data_files=relative_path('data/ingredients/synthetic/train.jsonl'),

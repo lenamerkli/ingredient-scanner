@@ -10,19 +10,34 @@ import numpy as np
 
 from video_to_frames import relative_path
 
-BACKGROUNDS = [_file for _file in os.listdir(relative_path('background')) if _file.endswith('.jpg')]
-IMAGE_SIZE = (720, 1280)
-REPETITIONS = 1
-SEED = 2024 - 7 - 28
+BACKGROUNDS: list[str] = [_file for _file in os.listdir(relative_path('background')) if _file.endswith('.jpg')]
+IMAGE_SIZE: tuple[int, int] = (720, 1280)  # (width, height) of original image
+REPETITIONS: int = 1  # number of times to repeat for each image
+SEED: int = 2024 - 7 - 28  # set seed for prediction
 
 
-def get_bounding_box(data):
+def get_bounding_box(data: dict) -> tuple:
+    """
+    Get the bounding box of the data
+    :param data: data dict
+    :return: tuple with the bounding box
+    """
     xs = [v["x"] for key1 in data for key2, v in data[key1].items()]
     ys = [v["y"] for key1 in data for key2, v in data[key1].items()]
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def adjust_coordinates(data, offset_x, offset_y, scaling_factor_x, scaling_factor_y):
+def adjust_coordinates(data: dict, offset_x: int, offset_y: int, scaling_factor_x: float,
+                       scaling_factor_y: float) -> dict:
+    """
+    Adjust the coordinates of the data
+    :param data: data dict
+    :param offset_x: offset in the x direction
+    :param offset_y: offset in the y direction
+    :param scaling_factor_x: scaling factor of the x direction
+    :param scaling_factor_y: scaling factor of the y direction
+    :return: new dict
+    """
     adjusted_data = {}
     for key1, key2_points in data.items():
         adjusted_data[key1] = {}
@@ -34,7 +49,14 @@ def adjust_coordinates(data, offset_x, offset_y, scaling_factor_x, scaling_facto
     return adjusted_data
 
 
-def create_zoomed_image(image, data, zoom_factor=1.2):
+def create_zoomed_image(image: Image, data: dict, zoom_factor: float = 1.2) -> Image:
+    """
+    Create a zoomed in image
+    :param image: original Image
+    :param data: data dict
+    :param zoom_factor: factor larger or equal to 1
+    :return: new image
+    """
     original_width, original_height = image.size
     min_x, min_y, max_x, max_y = get_bounding_box(data)
 
@@ -77,7 +99,14 @@ def create_zoomed_image(image, data, zoom_factor=1.2):
     return zoomed_image, adjusted_data
 
 
-def add_gaussian_noise(image, mean=0, sigma=1):
+def add_gaussian_noise(image, mean: float = 0, sigma: float = 1) -> Image:
+    """
+    Add gaussian noise to the image
+    :param image: original Image
+    :param mean: mean for the gaussian noise
+    :param sigma: sigma for the gaussian noise
+    :return: new image
+    """
     # Convert the image to a NumPy array
     np_image = np.array(image)
 
@@ -94,7 +123,13 @@ def add_gaussian_noise(image, mean=0, sigma=1):
     return noisy_pil_image
 
 
-def rotate_image(image, data) -> tuple:
+def rotate_image(image: Image, data: dict) -> tuple:
+    """
+    Rotate the image and data by 180 degrees
+    :param image: original image
+    :param data: data dict
+    :return: tuple with new image and data
+    """
     image = image.rotate(180)
     width, height = image.size
     old_data = data.copy()
@@ -133,19 +168,41 @@ def rotate_image(image, data) -> tuple:
     return image, data
 
 
-def adjust_brightness(image, min_factor=0.5, max_factor=1.5):
+def adjust_brightness(image: Image, min_factor: float = 0.5, max_factor: float = 1.5) -> Image:
+    """
+    Randomly adjust the brightness of the image
+    :param image: original image
+    :param min_factor: minimum factor
+    :param max_factor: maximum factor
+    :return: new image
+    """
     enhancer = ImageEnhance.Brightness(image)
     factor = random.uniform(min_factor, max_factor)
     return enhancer.enhance(factor)
 
 
-def adjust_contrast(image, min_factor=0.5, max_factor=1.5):
+def adjust_contrast(image: Image, min_factor: float = 0.5, max_factor: float = 1.5) -> Image:
+    """
+    Randomly adjust the contrast of the image
+    :param image: original image
+    :param min_factor: minimum factor
+    :param max_factor: maximum factor
+    :return: new image
+    """
     enhancer = ImageEnhance.Contrast(image)
     factor = random.uniform(min_factor, max_factor)
     return enhancer.enhance(factor)
 
 
-def apply_background(image, data, max_zoom, max_rotate):
+def apply_background(image: Image, data: dict, max_zoom: float, max_rotate: float) -> tuple:
+    """
+    Apply a random background to the image
+    :param image: original image
+    :param data: data dict
+    :param max_zoom: maximum zoom
+    :param max_rotate: maximum rotation
+    :return: tuple with new image and data
+    """
     image = image.convert('RGBA')
     # Load a random background image
     background_path = random.choice(BACKGROUNDS)
@@ -235,13 +292,13 @@ def apply_background(image, data, max_zoom, max_rotate):
     return background, data
 
 
-def main():
+def main() -> None:
     """
     Generates synthetic_frames data from the 'frames' and 'frames_json' directory
     and saves it in the 'synthetic_frames' directory.
     :return: None
     """
-    num_settings = 4
+    num_settings = 4  # number of settings iterations
     random.seed(SEED)
     files = sorted(os.listdir(relative_path('frames_json')))
     progress_bar = tqdm(total=len(files) * ((2 ** num_settings) - 1) * REPETITIONS)
@@ -251,6 +308,7 @@ def main():
                 original_data: dict = load_json(f)
             for frame in sorted(os.listdir(relative_path('frames'))):
                 if frame.startswith(file.split('.')[0]):
+                    # Set default values for missing data
                     if original_data['curvature']['top']['x'] is None:
                         original_data['curvature']['top']['x'] = (original_data['top']['left']['x']
                                                                   + original_data['top']['right']['x']) / 2
@@ -264,9 +322,11 @@ def main():
                         original_data['curvature']['bottom']['y'] = (original_data['bottom']['left']['y']
                                                                      + original_data['bottom']['right']['y']) / 2
                     with Image.open(relative_path(f"frames/{frame}")) as original_image:
+                        # Resize the image if it is not the default size
                         if original_image.size != IMAGE_SIZE:
                             original_size = original_image.size
                             original_image = original_image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
+                            # Adjust the point data to match the new size
                             for key1 in original_data:
                                 for key2 in original_data[key1]:
                                     original_data[key1][key2]['x'] = int(original_data[key1][key2]['x'] / (
@@ -283,16 +343,20 @@ def main():
                                     image = add_gaussian_noise(image)
                                     image = adjust_brightness(image)
                                     image = adjust_contrast(image)
+                                    # Rotate image 50% of the time
                                     if settings[0] == '1':
                                         image, data = rotate_image(image, data)
+                                    # Invert image 50% of the time
                                     if settings[1] == '1':
                                         image = ImageOps.invert(image)
+                                    # Scale, translate and apply background 75% of the time
                                     if settings[2] == '1' or settings[3] == '1':
                                         image, data = apply_background(image, data, 2, 35)
                                     image.save(relative_path(f"synthetic_frames/{frame.split('.')[0]}_{index:03}.png"))
                                     with open(relative_path(f"synthetic_frames_json/{frame.split('.')[0]}"
                                                             f"_{index:03}.json"), 'w') as f:
                                         dump_json(data, f, indent=2)
+                                    # Delete data and image to combat bugs with the implementation of these
                                     del data
                                     del image
                                     index += 1

@@ -13,7 +13,13 @@ from general import (
 
 
 def main() -> None:
+    """
+    Run the model over all images.
+    :return: None
+    """
+    # select the most recent model
     model_name = sorted([i for i in os.listdir(relative_path('models')) if i.endswith('.pt')])[-1]
+    # load the model
     model_weights = torch.load(relative_path(f'models/{model_name}'))
     model = NeuralNet()
     model.load_state_dict(model_weights)
@@ -21,6 +27,7 @@ def main() -> None:
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor()
     ])
+    # set model to evaluation mode
     model.eval()
     with torch.no_grad():
         for file in tqdm(os.listdir(relative_path('data/full_images/frames'))):

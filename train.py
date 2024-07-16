@@ -23,8 +23,16 @@ ENABLE_TEST_TRAIN = False
 
 
 def calculate_eval(model: NeuralNet, test_loader: torch.utils.data.DataLoader) -> float:
+    """
+    Calculates the score of the provided model of the test dataset.
+    :param model: Model to evaluate
+    :param test_loader: loader for the test dataset
+    :return: score as a float
+    """
+    # set model to evaluation mode
     model.eval()
     with torch.no_grad():
+        # count total distance
         n_total_distance = 0.0
         n_total_count = 0
         for images, data in test_loader:
@@ -35,36 +43,50 @@ def calculate_eval(model: NeuralNet, test_loader: torch.utils.data.DataLoader) -
             distance = torch.abs(outputs - data).tolist()
             for i in range(len(distance)):
                 for j in range(len(distance[i]) // 2):
+                    # calculate distance in 2D space
                     n_total_distance += sqrt(distance[i][2 * j] ** 2 + distance[i][2 * j + 1] ** 2)
+    # average over number of images and number of points
     return n_total_distance / (n_total_count * 12)
 
 
 def required_loss(loss_history: list[float]) -> float:
+    """
+    Returns the loss required to end the training
+    :param loss_history: list of all losses
+    :return: maximum loss
+    """
     array = sorted(loss_history[-(NUM_EPOCHS // 8):])
     if len(array) >= 2:
         return array[1]
     return array[0]
 
 
-def main():
-    global NUM_EPOCHS
+def main() -> None:
+    """
+    Train the vision model
+    :return: None
+    """
+    global NUM_EPOCHS  # somehow required for `scheduler = torch.optim...`
     start_time = current_time()
     for path in ['tmp/frames', 'tmp/synthetic_frames']:
         Path(relative_path(path)).mkdir(parents=True, exist_ok=True)
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor()
     ])
+    # load datasets
     train_dataset = SyntheticDataset(train=True, transform=transform)
     test_dataset = SyntheticDataset(train=False, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
     model = NeuralNet().to(DEVICE)
+    # define criterion and optimizer
     if CRITERION == 'IngredientScannerLoss':
         criterion = CRITERIONS[CRITERION](alpha=LOSS_ALPHA, beta=LOSS_BETA)
     else:
         criterion = CRITERIONS[CRITERION]()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=0.0001)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=NUM_EPOCHS // 10, gamma=0.1)
+    # train
     n_total_steps = len(train_loader)
     i = 0
     loss_history = []
@@ -105,6 +127,7 @@ def main():
             print('Keyboard interrupt detected')
             keyboard_interrupt = True
     if ENABLE_TEST_TRAIN:
+        # train on test dataset, if selected
         for epoch2 in range(NUM_EPOCHS // 2 + 1):
             try:
                 model.train()
@@ -135,7 +158,9 @@ def main():
     average_distance = calculate_eval(model, test_loader)
     print(f"Average distance: {average_distance:.4f}")
     time_stamp = current_time()
+    # save model to disk
     torch.save(model.state_dict(), relative_path(f"models/{time_stamp}.pt"))
+    # save metadata of the model to disk
     model_data = {
         'average_distance': average_distance,
         'batch_size': BATCH_SIZE,

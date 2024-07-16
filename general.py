@@ -65,10 +65,11 @@ class IngredientScannerLoss(torch.nn.Module):
         return losses
 
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-IMAGE_SIZE = (224, 224)
-ORIGINAL_SIZE = (720, 1280)
-CRITERIONS = {
+# auto-select GPU if cuda is available
+DEVICE: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+IMAGE_SIZE: tuple[int, int] = (224, 224)  # (width, height) of input size of the vision model
+ORIGINAL_SIZE: tuple[int, int] = (720, 1280)  # default (width, height) of original image
+CRITERIONS: dict[str, torch.nn.Module] = {
     'BCELoss': torch.nn.BCELoss,
     'CTCLoss': torch.nn.CTCLoss,
     'CrossEntropyLoss': torch.nn.CrossEntropyLoss,
@@ -82,18 +83,33 @@ CRITERIONS = {
     'SmoothL1Loss': torch.nn.SmoothL1Loss,
     'SoftMarginLoss': torch.nn.SoftMarginLoss,
     'TripletMarginLoss': torch.nn.TripletMarginLoss,
-}
+}  # loss functions
 
 
 def current_time() -> str:
+    """
+    Returns the current time in the format "YYYY-MM-DD_HH-MM-SS"
+    :return: the current time
+    """
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
 def relative_path(string: str) -> str:
+    """
+    Returns the absolute path of a given string by joining it with the directory of the current file.
+    :param string: relative path
+    :return: absolute path
+    """
     return os.path.join(os.path.dirname(__file__), string)
 
 
-def calculate_adler32_file_chunked(filepath, chunk_size=1024*64):
+def calculate_adler32_file_chunked(filepath: str, chunk_size: int = 1024*64):
+    """
+    Calculates the Adler-32 checksum of a file in chunks.
+    :param filepath: path to the file
+    :param chunk_size: size of each chunk
+    :return: the checksum
+    """
     checksum = 1  # Adler-32 initial value
     with open(filepath, 'rb') as f:
         while True:
@@ -115,9 +131,11 @@ class SyntheticDataset(torch.utils.data.Dataset):
         self.images = []
         self.data = []
         self.transform = transform
+        # create hash index if it does not exist
         if not os.path.exists(relative_path('tmp/hashes.json')):
             with open(relative_path('tmp/hashes.json'), 'w') as f:
                 json.dump({}, f, indent=4)
+        # load hash index
         with open(relative_path('tmp/hashes.json'), 'r') as f:
             hashes: dict[str, int] = json.load(f)
         new_hashes = deepcopy(hashes)
@@ -125,6 +143,7 @@ class SyntheticDataset(torch.utils.data.Dataset):
             if file.split('.')[-1].strip().lower() == 'png':
                 for data_file in sorted(os.listdir(relative_path(f"data/full_images/{self.data_dir}"))):
                     if data_file.split('.')[0] == file.split('.')[0]:
+                        # check if hash is the same
                         hashed = (calculate_adler32_file_chunked(relative_path(
                             f"data/full_images/{self.image_dir}/{file}"))
                                   + calculate_adler32_file_chunked(relative_path(
@@ -135,15 +154,18 @@ class SyntheticDataset(torch.utils.data.Dataset):
                                 use_cache = True
                         new_hashes[file.split('.')[0]] = hashed
                         if use_cache:
+                            # load cached data
                             image = Image.open(relative_path(f"tmp/{self.image_dir}/{file}"))
                             width, height = (720, 1280)
                             with open(relative_path(f"tmp/{self.data_dir}/{data_file}"), 'r') as f:
                                 data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
                         else:
+                            # load new data
                             image = Image.open(relative_path(f"data/full_images/{self.image_dir}/{file}"))
                             width, height = (720, 1280)
                             with open(relative_path(f"data/full_images/{self.data_dir}/{data_file}"), 'r') as f:
                                 data: dict[str, dict[str, dict[str, int | float | None]]] = json.load(f)
+                            # fill in missing values
                             if data['curvature']['top']['x'] is None:
                                 data['curvature']['top']['x'] = (data['top']['left']['x'] + data['top']['right']['x']) / 2
                             if data['curvature']['top']['y'] is None:
@@ -155,6 +177,7 @@ class SyntheticDataset(torch.utils.data.Dataset):
                                 data['curvature']['bottom']['y'] = (data['bottom']['left']['y'] + data['bottom']['right'][
                                     'y']) / 2
                             if image.size != ORIGINAL_SIZE:
+                                # resize image
                                 for key1 in data:
                                     for key2 in data[key1]:
                                         data[key1][key2]['x'] = int(data[key1][key2]['x'] * (width / ORIGINAL_SIZE[0]))
@@ -164,6 +187,7 @@ class SyntheticDataset(torch.utils.data.Dataset):
                             image.save(relative_path(f"tmp/{self.image_dir}/{file}"))
                             with open(relative_path(f"tmp/{self.data_dir}/{data_file}"), 'w') as f:
                                 json.dump(data, f, indent=4)
+                        # convert data to tensor
                         tensor_data = [
                             data['top']['left']['x'] / width,
                             data['top']['left']['y'] / height,
@@ -178,6 +202,7 @@ class SyntheticDataset(torch.utils.data.Dataset):
                             data['curvature']['bottom']['x'] / width,
                             data['curvature']['bottom']['y'] / height,
                         ]
+                        # check if data is valid
                         if any([0.0 > x or 1.0 < x for x in tensor_data]):
                             continue
                         tensor_data = torch.tensor(tensor_data, dtype=torch.float32).to(DEVICE)
@@ -185,6 +210,7 @@ class SyntheticDataset(torch.utils.data.Dataset):
                             image = self.transform(image).to(DEVICE)
                         self.data.append(tensor_data)
                         self.images.append(image)
+        # save hashes to disk
         with open(relative_path(f"tmp/hashes.json"), 'w') as f:
             json.dump(new_hashes, f, indent=4)
 
@@ -220,7 +246,7 @@ class NeuralNet(torch.nn.Module):
         )
 
     def forward(self, x):
-        # Check if we need to unsqueeze
+        # Check the need to unsqueeze
         if len(x.shape) == 3:  # Shape [C, H, W]
             x = x.unsqueeze(0)  # Shape [1, C, H, W]
 
@@ -249,6 +275,7 @@ class NeuralNet(torch.nn.Module):
 
 
 if __name__ == '__main__':
+    # generate a graph of the model; not used
     _model = NeuralNet()
     _x = torch.rand(1, 3, 224, 224)
     _dot = make_dot(_model(_x), params=dict(_model.named_parameters()))

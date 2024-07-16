@@ -3,11 +3,15 @@ import numpy as np
 from general import relative_path, json, tqdm, os, ORIGINAL_SIZE
 
 
-MARGIN = 0.1
-SCALE_FACTOR = 4
+MARGIN: float = 0.1  # how much padding should be added to the cut-out image
+SCALE_FACTOR: int = 4  # how much the size of the cut-out image should be scaled up
 
 
-def main():
+def main() -> None:
+    """
+    Warps all frames which have corresponding point data.
+    :return: None
+    """
     for file in tqdm(os.listdir(relative_path('data/full_images/frames'))):
         if (file.endswith('.png') and
                 os.path.exists(relative_path(f'data/full_images/frames_json/{file.rsplit(".", 1)[0]}.json'))):

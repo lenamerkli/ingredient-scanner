@@ -121,7 +121,7 @@ class ImageApp:
         # Resize the image based on the scale
         new_width = int(image.width * scale)
         new_height = int(image.height * scale)
-        resized_image = image.resize((new_width, new_height), Image.LANCZOS)
+        resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         self.photo = ImageTk.PhotoImage(resized_image)
 

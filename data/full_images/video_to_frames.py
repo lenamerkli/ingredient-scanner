@@ -28,6 +28,7 @@ def main() -> None:
     for file in tqdm(listdir(relative_path('videos'))):
         if file.split('.')[-1].strip().lower() in VIDEO_EXTENSIONS:
             (
+                # call ffmpeg to do the job
                 ffmpeg
                 .input(relative_path(f"videos/{file}"))
                 .output(relative_path(f"frames/{file.rsplit('.', 1)[0]}_%04d.png"), loglevel='quiet')

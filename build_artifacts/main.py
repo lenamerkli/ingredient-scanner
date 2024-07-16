@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import math
 import easyocr
 import cv2
 import os
@@ -15,26 +14,35 @@ from utils import *
 
 load_dotenv()
 
-SCALE_FACTOR = 4
-MAX_SIZE = 5_000_000
-MAX_SIDE = 8_000
-# ENGINE = ['easyocr']
-# ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620']
-ENGINE = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
+SCALE_FACTOR: int | float = 4  # how much the size of the cut-out image should be scaled up
+MAX_SIZE: int = 5_000_000  # maximum file size in bytes, using the WEBP format
+MAX_SIDE: int = 8_000  # maximum size of any side of the cut-out image in pixels
+# ENGINE: list[str] = ['easyocr']
+# ENGINE: list[str] = ['anthropic', 'claude-3-5-sonnet-20240620']
+ENGINE: list[str] = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
 
 
 def main() -> None:
+    """
+    Main inference function using user input.
+    :return: None
+    """
+    # load vision model
     model_weights = torch.load(relative_path('vision_model.pt'))
     model = NeuralNet()
     model.load_state_dict(model_weights)
+    # move model to the preferred device
     model.to(DEVICE)
+    # set model to evaluation mode
     model.eval()
     with torch.no_grad():
-        file_path = input('Enter file path: ')
+        file_path = input('Enter file path including .png extension: ')
         with Image.open(file_path) as image:
             image_size = image.size
+            # resize the image to match the input size of the model
             image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
             image = TRANSFORM(image).to(DEVICE)
+            # make the prediction and convert to dictionary
             output = model(image).tolist()[0]
             data = {
                 'top': {
@@ -69,6 +77,7 @@ def main() -> None:
                 },
             }
             print(f"{data=}")
+    # Warp the image based on the predicted coordinates (from the distort.py script, see comments there)
     image = cv2.imread(file_path)
     size_x = ((data['top']['right']['x'] - data['top']['left']['x']) +
               (data['bottom']['right']['x'] - data['bottom']['left']['x'])) / 2
@@ -108,21 +117,26 @@ def main() -> None:
         [max_width // 2, 0],
         [max_width // 2, max_height - 1],
     ], dtype=np.float32)
+    # https://learnopencv.com/homography-examples-using-opencv-python-c/
     homography, _ = cv2.findHomography(points, destination_points)
     warped_image = cv2.warpPerspective(image, homography, (max_width, max_height))
     cv2.imwrite('_warped_image.png', warped_image)
     del data
+    # selection of the OCR engine
     if ENGINE[0] == 'easyocr':
+        # https://github.com/JaidedAI/EasyOCR
         reader = easyocr.Reader(['de', 'fr', 'en'], gpu=True)
         result = reader.readtext('_warped_image.png')
         os.remove('_warped_image.png')
         text = '\n'.join([r[1] for r in result])
         ingredients = {}
     elif ENGINE[0] == 'anthropic':
+        # decrease size of the image to fit it into the requirements of anthropic
         decrease_size('_warped_image.png', '_warped_image.webp', MAX_SIZE, MAX_SIDE)
         os.remove('_warped_image.png')
         with open('_warped_image.webp', 'rb') as f:
             base64_image = base64.b64encode(f.read()).decode('utf-8')
+        # https://docs.anthropic.com/en/api/messages
         response = requests.post(
             url='https://api.anthropic.com/v1/messages',
             headers={
@@ -156,14 +170,16 @@ def main() -> None:
         os.remove('_warped_image.webp')
         try:
             data = response.json()
+            # extract the JSON data from the response
             ingredients = json.loads('{' + data['content'][0]['text'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
         except Exception as e:
             print(data)
             raise e
         text = ''
     elif ENGINE[0] == 'llama_cpp/v2/vision':
+        # decrease size of the image to fit it into the requirements of llama_cpp
         decrease_size('_warped_image.png', '_warped_image.webp', MAX_SIZE, MAX_SIDE)
-        # os.remove('_warped_image.png')
+        os.remove('_warped_image.png')
         response = requests.post(
             url='http://127.0.0.1:11434/llama_cpp/v2/vision',
             headers={
@@ -182,7 +198,9 @@ def main() -> None:
     else:
         raise ValueError(f'Unknown engine: {ENGINE[0]}')
     if text != '':
+        # only call the LLM if the ingredients could not be extracted from the text
         if DEVICE == 'cuda':
+            # if cuda is available, load the entire model to the GPU
             n_gpu_layers = -1
         else:
             n_gpu_layers = 0
@@ -202,10 +220,11 @@ def main() -> None:
                 },
             ],
             max_tokens=1024,
-            temperature=0,
-            # grammar=GRAMMAR,
+            temperature=0,  # no randomness
+            # grammar=GRAMMAR,  # grammar disabled due to a bug
         )
         try:
+            # extract the JSON data from the response
             ingredients = json.loads(
                 '{' + llm_result['choices'][0]['message']['content'].split('{', 1)[-1].rsplit('}', 1)[0] + '}')
         except Exception as e:

@@ -4,22 +4,30 @@ import easyocr
 from dotenv import load_dotenv
 from general import relative_path, os, json, Image, tqdm
 
-MAX_SIZE = 5_000_000
-# ENGINE = ['easyocr']
-# ENGINE = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
-ENGINE = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
+MAX_SIZE: int = 5_000_000  # maximum file size in bytes, using the WEBP format
+# ENGINE: list[str] = ['easyocr']
+# ENGINE: list[str] = ['anthropic', 'claude-3-5-sonnet-20240620', 'claude_3_5_sonnet']
+ENGINE: list[str] = ['llama_cpp/v2/vision', 'qwen-vl-next_b2583']
 with open(relative_path('data/cropped_images/prompt.md'), 'r', encoding='utf-8') as _f:
     PROMPT = _f.read()
 
 load_dotenv()
 
 
-def decrease_size(input_path, output_path):
+def decrease_size(input_path: str, output_path: str) -> None:
+    """
+        Decrease the size of an image and convert it to WEBP.
+        :param input_path: input path
+        :param output_path: output path, preferably with .webp extension
+        :param max_size: maximum file size in bytes
+        :param max_side: maximum resolution in pixels
+        :return: None
+        """
     with Image.open(input_path) as img:
         original_size = os.path.getsize(input_path)
         if original_size <= MAX_SIZE:
             print("Image is already below the maximum size.")
-            return True
+            return None
         width, height = img.size
         while width > 0 and height > 0:
             img_resized = img.resize((width, height), Image.Resampling.LANCZOS)
@@ -32,8 +40,13 @@ def decrease_size(input_path, output_path):
             raise ValueError("Could not reduce PNG size below max_size by reducing resolution.")
 
 
-def main():
+def main() -> None:
+    """
+    Calls the OCR engine and saves the results in the 'data2/frames_ocr' directory.
+    :return: None
+    """
     if ENGINE[0] == 'easyocr':
+        # https://github.com/JaidedAI/EasyOCR
         reader = easyocr.Reader(['de', 'fr', 'en'], gpu=True)
         for file in tqdm(os.listdir(relative_path('data2/frames'))):
             if file.endswith('.png'):
@@ -44,9 +57,11 @@ def main():
         file = input('Enter file name without extension: ')
         input_path = relative_path(f"data/cropped_images/frames/{file}.png")
         output_path = relative_path(f"tmp/frames_claude/{file}.webp")
+        # decrease size of the image to fit it into the requirements of anthropic
         decrease_size(input_path, output_path)
         with open(output_path, 'rb') as f:
             image = base64.b64encode(f.read()).decode('utf-8')
+        # https://docs.anthropic.com/en/api/messages
         response = requests.post(
             url='https://api.anthropic.com/v1/messages',
             headers={
@@ -86,6 +101,7 @@ def main():
             if file.endswith('.png'):
                 input_path = relative_path(f"data/cropped_images/frames/{file}")
                 output_path = relative_path(f"tmp/frames_local/{file.rsplit('.', 1)[0]}.webp")
+                # decrease size of the image to fit it into the requirements of anthropic
                 decrease_size(input_path, output_path)
                 response = requests.post(
                     url='http://127.0.0.1:11434/llama_cpp/v2/vision',
