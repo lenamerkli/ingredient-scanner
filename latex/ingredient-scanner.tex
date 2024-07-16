@@ -26,7 +26,7 @@
     \maketitle
     
     \begin{abstract}
-        With the recent advancements in computer vision and optical character recognition and using a convolutional neural network \cite{he2015deepresiduallearningimage} to cut out the product from a picture, it has now become possible to reliably extract ingredient lists from the back of a product using the Anthropic API \cite{claude3-5sonnet}. Open-weight or even only on-device optical character recognition lacks the quality to be used in a production environment, although the progress is promising. The Anthropic API is also currently not feasible due to the high cost of 100 pictures per 1 Swiss Franc.
+        With the recent advancements in computer vision and optical character recognition and using a convolutional neural network \cite{he2015deepresiduallearningimage} to cut out the product from a picture, it has now become possible to reliably extract ingredient lists from the back of a product using the Anthropic API \cite{claude3-5sonnet}. Open-weight or even only on-device optical character recognition lacks the quality to be used in a production environment, although the progress in development is promising. The Anthropic API is also currently not feasible due to the high cost of 1 Swiss Franc per 100 pictures.
         
         The training code and data is available on GitHub: \url{https://github.com/lenamerkli/ingredient-scanner/}. An inference example can be found on HuggingFace: \url{https://huggingface.co/lenamerkli/ingredient-scanner}.
         
@@ -441,10 +441,10 @@
     \chapter{Large Language Model}
     
         \section{Dataset}
-            A synthetic data generator created a dataset with $10^{4}$ examples based upon patterns noticed in the optical character recognition engine of the local visual language model.
+            A synthetic data generator created a dataset with $10^{4}$ examples based upon patterns noticed in the optical character recognition engine of the local visual language model. Too many different functions were implemented to fit onto this report, these can be viewed in \href{https://github.com/lenamerkli/ingredient-scanner/blob/main/data/ingredients/generate_synthethic.py}{generate\_synthetic.py}.
     
         \section{Training}
-            The local version of unsloth \cite{unsloth} has been used for fine-tuning \cite{finetuning} \cite{finetune_qwen2}. The base model is Qwen2-0.5B-Instruct \cite{qwen2} with 4bit bits-and-bytes \cite{bitsandbytes} pulled from \url{https://huggingface.co/unsloth/Qwen2-0.5B-bnb-4bit}.
+            The local version of unsloth \cite{unsloth} has been used for fine-tuning \cite{finetuning} \cite{finetune_qwen2}. The base model is Qwen2-0.5B-Instruct \cite{qwen2} with 4bit bits-and-bytes \cite{bitsandbytes} pulled from \url{https://huggingface.co/unsloth/Qwen2-0.5B-bnb-4bit}. Training lasted for 256 steps or 0.2 epochs with the adamw\_8bit \cite{adamw8bit} optimizer.
             \begin{figure}[h]
                 \centering
                 \begin{tikzpicture}
@@ -591,7 +591,7 @@
             
             The choice of an only 0.5B parameter local large language model was a mistake, as this is apparently not enough for the simple task of converting plain text or markdown into a JSON list.
             
-            Due to resource constraints, a lot of synthetic data was used which probably negatively impacts the accuracy of the models.
+            Due to resource constraints, a lot of synthetic data was used which probably negatively impacts the accuracy of the models. Vegan products are over-represented, as both authors are mostly vegan households. Products with a lot of ingredients were favored in the data collection due to being more interesting.
         
 
 
