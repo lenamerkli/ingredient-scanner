@@ -114,7 +114,7 @@
                 As there was no existing dataset for such a project (hence this paper exists), the authors created a dataset themselves by collecting and labeling photos. A custom viewer, \href{https://github.com/lenamerkli/ingredient-scanner/tree/main/data/full_images/frames_json}{/data/full\_images/viewer.py}, has aided in the labeling process because it outputs the coordinates of all mouse clicks.
                 
             \subsection{Synthesizing Additional Data}
-                As these 138 data-points are clearly not enough to fine-tune a convolutional neural network, a custom training data synthesizer has been applied. Six different algorithms are in use for this purpose in the following order:
+                As these 190 data-points are clearly not enough to fine-tune a convolutional neural network, a custom training data synthesizer has been applied. Six different algorithms are in use for this purpose in the following order:
                 \begin{itemize}
                     \item add\_gaussian\_noise: Gaussian noise \cite{gaussian-noise} with a mean of zero and a sigma of one is applied to the entire image.
                     \item adjust\_brightness: Adjusts the brightness of the image by a random factor between 0.5 and 1.5.
